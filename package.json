@@ -1,0 +1,30 @@
+{
+  "name": "hl7-tstd",
+  "version": "0.0.1",
+  "description": "A simple package to create, parse & transform HL7 message.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/1nandagopal/hl7-tstd.git"
+  },
+  "keywords": [
+    "hl7",
+    "parse",
+    "create",
+    "transform",
+    "format"
+  ],
+  "author": "1nandagopal",
+  "license": "UNLICENSED",
+  "private": "true",
+  "bugs": {
+    "url": "https://github.com/1nandagopal/hl7-tstd/issues"
+  },
+  "homepage": "https://github.com/1nandagopal/hl7-tstd#readme",
+  "devDependencies": {
+    "typescript": "^5.9.2"
+  }
+}
