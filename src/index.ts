@@ -118,7 +118,7 @@ class Segment {
         const componentsArr = [];
 
         for (const compKey in component) {
-          componentsArr.push(component[compKey]!.join(subCompDelim));
+          componentsArr.push(component[compKey]?.join(subCompDelim));
         }
 
         return componentsArr.join(componentDelim);
@@ -135,7 +135,7 @@ class Segment {
           const compsArr = [];
 
           for (const compKey in repeatingField) {
-            compsArr.push(repeatingField[compKey]!.join(subCompDelim));
+            compsArr.push(repeatingField[compKey]?.join(subCompDelim));
           }
 
           repeatingCompsArr.push(compsArr.join(componentDelim));
@@ -174,7 +174,7 @@ class Segment {
 
     if (!this.data) this.data = {};
 
-    for (let i = type === 'MSH' ? 2 : 1; i <= parseInt(fieldIdx); i++) {
+    for (let i = type === 'MSH' ? 2 : 1; i <= parseInt(fieldIdx, 10); i++) {
       if (this.data[`${type}.${i}`]?.[0]?.[`${type}.${i}.${1}`] == null)
         this.data[`${type}.${i}`] = [{ [`${type}.${i}.${1}`]: [''] }];
     }
@@ -184,12 +184,14 @@ class Segment {
     } else {
       for (let i = 0; i <= repeatingIndex; i++) {
         if (this.data[`${type}.${fieldIdx}`]?.[i]?.[`${type}.${fieldIdx}.${1}`] == null)
-          this.data[`${type}.${fieldIdx}`]![i] = { [`${type}.${fieldIdx}.${1}`]: [''] };
+          this.data[`${type}.${fieldIdx}`]![i] = {
+            [`${type}.${fieldIdx}.${1}`]: [''],
+          };
       }
     }
 
     if (compIdx) {
-      for (let i = 1; i <= parseInt(compIdx); i++) {
+      for (let i = 1; i <= parseInt(compIdx, 10); i++) {
         if (
           this.data[`${type}.${fieldIdx}`]?.[repeatingIndex]?.[`${type}.${fieldIdx}.${i}`] == null
         )
@@ -210,7 +212,9 @@ class Segment {
         subComponentIndex
       ] = value;
     } else {
-      this.data[`${type}.${fieldIdx}`]![repeatingIndex] = { [`${type}.${fieldIdx}.${1}`]: [value] };
+      this.data[`${type}.${fieldIdx}`]![repeatingIndex] = {
+        [`${type}.${fieldIdx}.${1}`]: [value],
+      };
     }
   }
 }
@@ -273,9 +277,11 @@ class HL7 {
         }
       }
 
-      if (type == 'MSH') {
+      if (type === 'MSH') {
         segment.data['MSH.2'] = [
-          { 'MSH.2.1': [`${componentDelim}${repeatingDelim}\\${subCompDelim}`] },
+          {
+            'MSH.2.1': [`${componentDelim}${repeatingDelim}\\${subCompDelim}`],
+          },
         ];
       }
 
@@ -299,7 +305,7 @@ class HL7 {
           const compsArr = [];
 
           for (const subCompsKey in component) {
-            compsArr.push(component[subCompsKey]!.join(subCompDelim));
+            compsArr.push(component[subCompsKey]?.join(subCompDelim));
           }
 
           repeatingCompsArr.push(compsArr.join(componentDelim));
@@ -593,5 +599,5 @@ class HL7 {
   }
 }
 
-export { type Segment };
+export type { Segment };
 export default HL7;
