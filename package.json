@@ -20,7 +20,6 @@
     "node": ">=14.0.0"
   },
   "scripts": {
-    "buil": "rimraf dist && npx rollup -c && mv ./dist/cjs/index.d.ts ./dist/cjs/index.d.cts && mv ./dist/mjs/index.d.ts ./dist/mjs/index.d.mts",
     "build": "rimraf dist && npx rollup -c"
   },
   "keywords": [
