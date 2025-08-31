@@ -2,13 +2,25 @@
   "name": "hl7-tstd",
   "version": "0.0.1",
   "description": "A simple package to create, parse & transform HL7 message.",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    }
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/1nandagopal/hl7-tstd.git"
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "src"
+  ],
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "scripts": {
+    "build": "rimraf dist && npx rollup -c"
   },
   "keywords": [
     "hl7",
@@ -20,11 +32,21 @@
   "author": "1nandagopal",
   "license": "UNLICENSED",
   "private": "true",
+  "homepage": "https://github.com/1nandagopal/hl7-tstd#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/1nandagopal/hl7-tstd.git"
+  },
   "bugs": {
     "url": "https://github.com/1nandagopal/hl7-tstd/issues"
   },
-  "homepage": "https://github.com/1nandagopal/hl7-tstd#readme",
   "devDependencies": {
+    "@biomejs/biome": "2.2.2",
+    "@rollup/plugin-typescript": "^12.1.4",
+    "@types/node": "^24.3.0",
+    "rimraf": "^6.0.1",
+    "rollup": "^4.49.0",
+    "tslib": "^2.8.1",
     "typescript": "^5.9.2"
   }
 }
