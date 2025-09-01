@@ -6,11 +6,10 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
-    "dist",
-    "src"
+    "dist"
   ],
   "engines": {
-    "node": ">=14.0.0"
+    "node": ">=16.0.0"
   },
   "scripts": {
     "build": "rimraf dist && npx tsc"
@@ -23,8 +22,8 @@
     "format"
   ],
   "author": "1nandagopal",
-  "license": "UNLICENSED",
-  "private": "true",
+  "license": "Apache-2.0",
+  "private": "false",
   "homepage": "https://github.com/1nandagopal/hl7-tstd#readme",
   "repository": {
     "type": "git",
