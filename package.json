@@ -19,11 +19,11 @@
     "parse",
     "create",
     "transform",
-    "format"
+    "format",
+    "hl7-tstd"
   ],
   "author": "1nandagopal",
   "license": "Apache-2.0",
-  "private": "false",
   "homepage": "https://github.com/1nandagopal/hl7-tstd#readme",
   "repository": {
     "type": "git",
