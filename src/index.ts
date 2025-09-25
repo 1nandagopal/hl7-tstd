@@ -1,3 +1,7 @@
+type Prettify<T> = {
+  [K in keyof T]: T[K];
+} & {};
+
 type TSegmentType =
   | 'DG1'
   | 'EVN'
@@ -35,12 +39,12 @@ class Node<T> {
 }
 
 class Segment {
-  private parseOptions: Omit<TParseOptions, 'eolDelim' | 'buildEolChar'>;
+  private parseOptions: Prettify<Omit<TParseOptions, 'eolDelim' | 'buildEolChar'>>;
 
   constructor(
     public readonly type: TSegmentType,
     public data: TSegmentData | null = null,
-    parseOptions?: Omit<TParseOptions, 'eolDelim' | 'buildEolChar'>
+    parseOptions?: Prettify<Omit<TParseOptions, 'eolDelim' | 'buildEolChar'>>
   ) {
     this.parseOptions = {
       fieldDelim: parseOptions?.fieldDelim ?? '|',
@@ -50,26 +54,26 @@ class Segment {
     };
   }
 
-  get(field: string, repeatingIndex: number = 0, subComponentIndex: number = 0) {
+  get(field: string, repeatingIndex = 0, subComponentIndex = 0) {
     if (!this.data) return null;
 
     if (!field || !/^[A-Z\d]{3}(\.\d+){0,2}$/.test(field))
-      throw new Error(`Invalid field: '${field}'`);
+      throw new Error(`Invalid parameter: field [${field}]`);
 
     if (typeof repeatingIndex !== 'number' && repeatingIndex < -1)
-      throw new Error(
-        `Invalid Repeating index: '${repeatingIndex}' (type:${typeof repeatingIndex})`
-      );
+      throw new Error(`Invalid parameter: repeatingIndex [${repeatingIndex}]`);
 
     if (typeof subComponentIndex !== 'number' && subComponentIndex < -1)
-      throw new Error(
-        `Invalid Subcomponent index: '${subComponentIndex}' (type:${typeof subComponentIndex})`
-      );
+      throw new Error(`Invalid parameter: subComponentIndex [${subComponentIndex}]`);
 
     const [type, fieldIdx, compIdx] = field.split('.');
 
-    if (type !== this.type) throw new Error(`Invalid field: '${field}'`);
+    if (type !== this.type)
+      throw new Error(
+        `Invalid parameter: 'field' [${field}]. Cannot get ${field} from ${this.type} segment.`
+      );
 
+    // TODO---------
     if (compIdx && repeatingIndex < 0)
       throw new Error(
         `Invalid Repeating index: '${repeatingIndex}' (type:${typeof repeatingIndex})\nCannot get All repeating fields when getting component ${field}`
@@ -148,7 +152,7 @@ class Segment {
     }
   }
 
-  set(field: string, value: string, repeatingIndex: number = 0, subComponentIndex: number = 0) {
+  set(field: string, value: string, repeatingIndex = 0, subComponentIndex = 0) {
     if (!field || !/^[A-Z\d]{3}(\.\d+){1,2}$/.test(field))
       throw new Error(`Invalid field: '${field}'`);
 
@@ -225,7 +229,7 @@ class HL7 {
   private head: Node<Segment> | null = null;
   private tail: Node<Segment> | null = null;
 
-  constructor(hl7Msg: string, parseOptions?: Partial<TParseOptions>) {
+  constructor(hl7Msg: string, parseOptions?: Prettify<Partial<TParseOptions>>) {
     this.raw = typeof hl7Msg === 'string' ? hl7Msg : '';
     this.parseOptions = {
       fieldDelim: parseOptions?.fieldDelim ?? '|',
@@ -241,7 +245,9 @@ class HL7 {
 
   transform() {
     if (!this.raw.startsWith('MSH')) {
-      throw new Error('Expected raw msg to be HL7 message. Message does not start with MSH');
+      throw new Error(
+        'Expected raw msg to be HL7 message. Message does not start with MSH segment.'
+      );
     }
 
     const segmentsStr = this.raw
@@ -258,11 +264,11 @@ class HL7 {
 
       for (let i = 1; i < fields.length; i++) {
         const fieldIdx = type === 'MSH' ? i + 1 : i;
-        const repeatings = fields[i]!.split(repeatingDelim);
+        const repeatingComps = fields[i]!.split(repeatingDelim);
         segment.data[`${type}.${fieldIdx}`] = [];
 
-        for (let j = 0; j < repeatings.length; j++) {
-          const components = repeatings[j]!.split(componentDelim);
+        for (let j = 0; j < repeatingComps.length; j++) {
+          const components = repeatingComps[j]!.split(componentDelim);
           segment.data[`${type}.${fieldIdx}`]![j] = {};
 
           for (let k = 0; k < components.length; k++) {
@@ -321,14 +327,12 @@ class HL7 {
   }
 
   getSegment(type: TSegmentType) {
-    if (!/^[A-Z\d]{3}$/.test(type)) throw new Error(`Invalid Segment type: '${type}'`);
+    if (!/^[A-Z\d]{3}$/.test(type)) throw new Error(`Invalid parameter: 'type' [${type}]`);
 
     let curr = this.head;
 
     while (curr) {
-      if (curr.data.type === type) {
-        return curr.data;
-      }
+      if (curr.data.type === type) return curr.data;
 
       curr = curr.next;
     }
@@ -337,19 +341,14 @@ class HL7 {
   }
 
   getSegments(type?: TSegmentType) {
-    if (type && !/^[A-Z\d]{3}$/.test(type)) throw new Error(`Invalid Segment type: '${type}'`);
+    if (type && !/^[A-Z\d]{3}$/.test(type)) throw new Error(`Invalid parameter: 'type' [${type}]`);
 
     const segments = [];
     let curr = this.head;
 
     while (curr) {
-      if (type) {
-        if (type === curr.data.type) {
-          segments.push(curr.data);
-        }
-      } else {
-        segments.push(curr.data);
-      }
+      if (type && type === curr.data.type) segments.push(curr.data);
+      else segments.push(curr.data);
 
       curr = curr.next;
     }
@@ -361,23 +360,24 @@ class HL7 {
     startSegment: Segment,
     type: TSegmentType,
     stopSegmentType: TSegmentType[],
-    consecutive: boolean = false
+    consecutive = false
   ) {
     if (!startSegment || !(startSegment instanceof Segment))
-      throw new Error(`Invalid Target Segment: ${JSON.stringify(startSegment)}`);
-    if (!/^[A-Z\d]{3}$/.test(type)) throw new Error(`Invalid Segment type: '${type}'`);
+      throw new Error(`Invalid parameter: 'startSegment'`);
+    if (!/^[A-Z\d]{3}$/.test(type)) throw new Error(`Invalid parameter: 'type' [${type}]`);
     if (typeof consecutive !== 'boolean')
-      throw new Error(`Invalid Consecutive flag: '${consecutive}'`);
+      throw new Error(`Invalid parameter: 'consecutive' [${consecutive}]`);
 
     const startNode = this.getNode(startSegment);
 
-    if (!startNode) throw new Error(`Failed to locate Start Segment: '${startSegment.type}`);
+    if (!startNode) throw new Error(`Failed to locate: 'startSegment' [${startSegment.type}]`);
 
     const res = [];
     let curr = startNode.next;
 
     while (curr) {
       if (stopSegmentType.includes(curr.data.type)) break;
+
       if (curr.data.type === type) res.push(curr.data);
       else if (consecutive && res.length) break;
 
@@ -388,30 +388,29 @@ class HL7 {
   }
 
   createSegment(type: TSegmentType) {
-    if (!/^[A-Z\d]{3}$/.test(type)) throw new Error(`Invalid Segment type: '${type}'`);
+    if (!/^[A-Z\d]{3}$/.test(type)) throw new Error(`Invalid parameter: 'type' [${type}]`);
 
     return this.appendSegmentNode(new Segment(type, null, this.parseOptions));
   }
 
   createSegmentAfter(type: TSegmentType, targetSegment: Segment) {
-    if (!/^[A-Z\d]{3}$/.test(type)) throw new Error(`Invalid Segment type: '${type}'`);
+    if (!/^[A-Z\d]{3}$/.test(type)) throw new Error(`Invalid parameter: 'type' [${type}]`);
     if (!targetSegment || !(targetSegment instanceof Segment))
-      throw new Error(`Invalid Target Segment : ${JSON.stringify(targetSegment)}`);
+      throw new Error(`Invalid parameter: 'targetSegment'`);
 
     return this.appendSegmentNode(new Segment(type, null, this.parseOptions), targetSegment);
   }
 
-  createSegmentBefore(type: string, targetSegment: Segment) {
-    if (!/^[A-Z\d]{3}$/.test(type)) throw new Error(`Invalid Segment type: '${type}'`);
+  createSegmentBefore(type: TSegmentType, targetSegment: Segment) {
+    if (!/^[A-Z\d]{3}$/.test(type)) throw new Error(`Invalid parameter: 'type' [${type}]`);
     if (!targetSegment || !(targetSegment instanceof Segment))
-      throw new Error(`Invalid Target Segment: ${JSON.stringify(targetSegment)}`);
+      throw new Error(`Invalid parameter: 'targetSegment'`);
 
     return this.prependSegmentNode(new Segment(type, null, this.parseOptions), targetSegment);
   }
 
   deleteSegment(segment: Segment) {
-    if (!segment || !(segment instanceof Segment))
-      throw new Error(`Invalid Segment: ${JSON.stringify(segment)}`);
+    if (!segment || !(segment instanceof Segment)) throw new Error(`Invalid parameter: 'segment'`);
 
     this.deleteSegments([segment]);
   }
@@ -419,13 +418,13 @@ class HL7 {
   deleteSegments(segments: Segment[]) {
     for (const segment of segments) {
       if (!segment || !(segment instanceof Segment))
-        throw new Error(`Invalid Segment: ${JSON.stringify(segment)}`);
+        throw new Error(`Invalid parameter: 'segments'`);
+    }
 
+    for (const segment of segments) {
       const node = this.getNode(segment);
 
-      if (!node) {
-        break;
-      }
+      if (!node) break;
 
       if (node.prev?.next) node.prev.next = node.next;
       if (node.next?.prev) node.next.prev = node.prev;
@@ -438,20 +437,20 @@ class HL7 {
   }
 
   moveSegmentAfter(segment: Segment, targetSegment: Segment) {
-    if (!segment || !(segment instanceof Segment))
-      throw new Error(`Invalid Segment: ${JSON.stringify(segment)}`);
+    if (!segment || !(segment instanceof Segment)) throw new Error(`Invalid parameter: 'segment'`);
 
     if (!targetSegment || !(targetSegment instanceof Segment))
-      throw new Error(`Invalid Target Segment: ${JSON.stringify(targetSegment)}`);
+      throw new Error(`Invalid parameter: 'targetSegment'`);
 
     const node = this.getNode(segment);
 
-    if (!node) throw new Error(`Failed to locate Segment: '${segment.type}'`);
+    if (!node) throw new Error(`Failed to locate: 'segment' [${segment.type}]`);
 
     const targetNode = this.getNode(targetSegment);
 
-    if (!targetNode) throw new Error(`Failed to locate Target Segment: '${targetSegment.type}'`);
+    if (!targetNode) throw new Error(`Failed to locate: 'targetSegment' [${targetSegment.type}]`);
 
+    if (node === this.head) this.head = this.head.next;
     if (node.prev?.next) node.prev.next = node.next;
     if (node.next?.prev) node.next.prev = node.prev;
 
@@ -460,24 +459,25 @@ class HL7 {
     targetNode.next = node;
 
     if (node.next?.prev) node.next.prev = node;
+
     if (targetNode === this.tail) this.tail = this.tail.next;
   }
 
   moveSegmentBefore(segment: Segment, targetSegment: Segment) {
-    if (!segment || !(segment instanceof Segment))
-      throw new Error(`Invalid Segment: ${JSON.stringify(segment)}`);
+    if (!segment || !(segment instanceof Segment)) throw new Error(`Invalid parameter: 'segment'`);
 
     if (!targetSegment || !(targetSegment instanceof Segment))
-      throw new Error(`Invalid Target Segment: ${JSON.stringify(targetSegment)}`);
+      throw new Error(`Invalid parameter: 'targetSegment'`);
 
     const node = this.getNode(segment);
 
-    if (!node) throw new Error(`Failed to locate Segment: '${segment.type}'`);
+    if (!node) throw new Error(`Failed to locate: 'segment' [${segment.type}]`);
 
     const targetNode = this.getNode(targetSegment);
 
-    if (!targetNode) throw new Error(`Failed to locate Target Segment: '${targetSegment.type}'`);
+    if (!targetNode) throw new Error(`Failed to locate: 'targetSegment' [${targetSegment.type}]`);
 
+    if (node === this.tail) this.tail = this.tail.prev;
     if (node.prev?.next) node.prev.next = node.next;
     if (node.next?.prev) node.next.prev = node.prev;
 
@@ -486,18 +486,19 @@ class HL7 {
     targetNode.prev = node;
 
     if (node.prev?.next) node.prev.next = node;
+
     if (targetNode === this.head) this.head = this.head.prev;
   }
 
-  reindexSegments(
-    resetRules: { [k in Exclude<TSegmentType, 'MSH'>]?: TSegmentType[] },
-    field = '1.1'
-  ) {
+  reindexSegments(resetRules: Record<TSegmentType, TSegmentType[]>, startIndex = 1, field = '1.1') {
     if (!resetRules || typeof resetRules !== 'object')
-      throw new Error('Invalid Parameter: resetRules');
+      throw new Error(`Invalid parameter: 'resetRules'`);
 
-    if (field && !/^(\d)+(\.\d+)*$/.test(field))
-      throw new Error(`Invalid Parameter: field '${field}'`);
+    if (!startIndex || typeof startIndex !== 'number')
+      throw new Error(`Invalid parameter: 'startIndex' [${startIndex}]`);
+
+    if (field && !/^(\d)(\.\d+){0,1}$/.test(field))
+      throw new Error(`Invalid parameter: 'field' [${field}]`);
 
     let curr = this.head;
     const indexMap: Record<string, number> = {};
@@ -509,13 +510,15 @@ class HL7 {
     while (curr) {
       const segment = curr.data;
 
-      if (segment.type in resetRules) {
+      if (segment.type in resetRules)
         segment.set(`${segment.type}.${field}`, String(indexMap[segment.type]!++));
-      }
 
-      for (const key in resetRules) {
-        if (resetRules[key]?.includes(segment.type)) {
-          indexMap[key] = 1;
+      for (const [segmentType, resetTriggers] of Object.entries(resetRules)) {
+        for (const resetTrigger of resetTriggers) {
+          if (segment.type === resetTrigger) {
+            indexMap[segmentType] = 1;
+            break;
+          }
         }
       }
 
@@ -525,15 +528,13 @@ class HL7 {
 
   private getNode(segment: Segment) {
     if (!segment || !(segment instanceof Segment)) {
-      throw new Error(`Invalid Segment: ${JSON.stringify(segment)}`);
+      throw new Error(`Invalid parameter: 'segment'`);
     }
 
     let curr = this.head;
 
     while (curr) {
-      if (curr.data === segment) {
-        return curr;
-      }
+      if (curr.data === segment) return curr;
 
       curr = curr.next;
     }
@@ -543,33 +544,33 @@ class HL7 {
 
   private appendSegmentNode(newSegment: Segment, targetSegment?: Segment) {
     if (!newSegment || !(newSegment instanceof Segment))
-      throw new Error(`Invalid Segment: ${JSON.stringify(newSegment)}`);
+      throw new Error(`Invalid parameter: 'newSegment'`);
 
     if (targetSegment && !(targetSegment instanceof Segment))
-      throw new Error(`Invalid Target Segment: ${JSON.stringify(targetSegment)}`);
+      throw new Error(`Invalid parameter: 'targetSegment'`);
 
     const newNode = new Node(newSegment);
 
     if (targetSegment) {
       const targetNode = this.getNode(targetSegment);
 
-      if (!targetNode) throw new Error(`Failed to locate Target Segment: '${targetSegment.type}'`);
+      if (!targetNode) throw new Error(`Failed to locate: 'targetSegment' [${targetSegment.type}]`);
 
       newNode.next = targetNode.next;
       newNode.prev = targetNode;
       targetNode.next = newNode;
 
       if (newNode.next?.prev) newNode.next.prev = newNode;
-      if (targetNode === this.tail) this.tail = newNode;
+      if (targetNode === this.tail) this.tail = this.tail.next;
     } else if (!this.head) {
       this.head = newNode;
       this.tail = newNode;
     } else if (this.tail) {
       newNode.prev = this.tail;
       this.tail.next = newNode;
-      this.tail = newNode;
+      this.tail = this.tail.next;
     } else {
-      throw new Error(`Failed to append Segment: ${newSegment.type}`);
+      throw new Error(`Failed to append segment: ${newSegment.type}`);
     }
 
     return newSegment;
@@ -577,14 +578,14 @@ class HL7 {
 
   private prependSegmentNode(newSegment: Segment, targetSegment: Segment) {
     if (!newSegment || !(newSegment instanceof Segment))
-      throw new Error(`Invalid Segment: ${JSON.stringify(newSegment)}`);
+      throw new Error(`Invalid parameter: 'newSegment'`);
 
     if (!targetSegment || !(targetSegment instanceof Segment))
-      throw new Error(`Invalid Target Segment: ${JSON.stringify(targetSegment)}`);
+      throw new Error(`Invalid parameter: 'targetSegment'`);
 
     const targetNode = this.getNode(targetSegment);
 
-    if (!targetNode) throw new Error(`Failed to locate Target Segment: '${targetSegment.type}'`);
+    if (!targetNode) throw new Error(`Failed to locate: 'targetSegment' [${targetSegment.type}]`);
 
     const newNode = new Node(newSegment);
 
