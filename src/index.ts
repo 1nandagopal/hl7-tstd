@@ -58,16 +58,16 @@ class Segment {
     if (!this.data) return null;
 
     if (!field || !/^[A-Z\d]{3}(\.\d+){0,2}$/.test(field))
-      throw new Error(`Invalid parameter: field [${field}]`);
+      throw new Error(`Invalid parameter: 'field' [${field}]`);
     if (typeof repeatingIndex !== 'number' || repeatingIndex < -1)
-      throw new Error(`Invalid parameter: repeatingIndex [${repeatingIndex}]`);
+      throw new Error(`Invalid parameter: 'repeatingIndex' [${repeatingIndex}]`);
     if (typeof subComponentIndex !== 'number' || subComponentIndex < -1)
-      throw new Error(`Invalid parameter: subComponentIndex [${subComponentIndex}]`);
+      throw new Error(`Invalid parameter: 'subComponentIndex' [${subComponentIndex}]`);
 
     const { fieldDelim, repeatingDelim, componentDelim, subCompDelim } = this.parseOptions;
     const [type, fieldIdx, compIdx] = field.split('.');
 
-    if (type !== this.type)
+    if (!type || type !== this.type)
       throw new Error(
         `Invalid parameter: 'field' [${field}]. Cannot get [${field}] from [${this.type}] segment.`
       );
@@ -133,27 +133,22 @@ class Segment {
 
   set(field: string, value: string, repeatingIndex = 0, subComponentIndex = 0) {
     if (!field || !/^[A-Z\d]{3}(\.\d+){1,2}$/.test(field))
-      throw new Error(`Invalid field: '${field}'`);
-
-    if (typeof value !== 'string')
-      throw new Error(`Invalid value: '${value}' (type:${typeof value})`);
-
+      throw new Error(`Invalid parameter: 'field' [${field}]`);
+    if (!value || typeof value !== 'string')
+      throw new Error(`Invalid parameter: 'value' [${value}]`);
     if (typeof repeatingIndex !== 'number' && repeatingIndex < 0)
-      throw new Error(
-        `Invalid Repeating index: '${repeatingIndex}' (type:${typeof repeatingIndex})`
-      );
-
+      throw new Error(`Invalid parameter: 'repeatingIndex' [${repeatingIndex}]`);
     if (typeof subComponentIndex !== 'number' && subComponentIndex < 0)
-      throw new Error(
-        `Invalid Subcomponent index: '${subComponentIndex}' (type:${typeof subComponentIndex})`
-      );
+      throw new Error(`Invalid parameter: 'subComponentIndex' [${subComponentIndex}]`);
 
     const [type, fieldIdx, compIdx] = field.split('.');
 
     if (!type || type !== this.type)
-      throw new Error(`Invalid type: '${type}'. Cannot set ${type} in ${this.type} Segment`);
+      throw new Error(
+        `Invalid parameter: 'field' [${field}]. Cannot set [${field}] from [${this.type}] segment.`
+      );
 
-    if (!fieldIdx) throw new Error('Invalid field'); // TODO ----------------
+    if (!fieldIdx) throw new Error(`Invalid parameter: 'field' [${field}]`);
 
     if (!this.data) this.data = {};
 
@@ -162,15 +157,9 @@ class Segment {
         this.data[`${type}.${i}`] = [{ [`${type}.${i}.${1}`]: [''] }];
     }
 
-    if (repeatingIndex === -1) {
-      this.data[`${type}.${fieldIdx}`] = [{ [`${type}.${fieldIdx}.${1}`]: [''] }];
-    } else {
-      for (let i = 0; i <= repeatingIndex; i++) {
-        if (this.data[`${type}.${fieldIdx}`]?.[i]?.[`${type}.${fieldIdx}.${1}`] == null)
-          this.data[`${type}.${fieldIdx}`]![i] = {
-            [`${type}.${fieldIdx}.${1}`]: [''],
-          };
-      }
+    for (let i = 0; i <= repeatingIndex; i++) {
+      if (this.data[`${type}.${fieldIdx}`]?.[i]?.[`${type}.${fieldIdx}.${1}`] == null)
+        this.data[`${type}.${fieldIdx}`]![i] = { [`${type}.${fieldIdx}.${1}`]: [''] };
     }
 
     if (compIdx) {
