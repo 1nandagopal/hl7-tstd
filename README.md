@@ -2,27 +2,91 @@
 
 A simple package to create, parse & transform HL7 message.
 
-```js
+```typescript
 import HL7, { Segment } from 'hl7-tstd';
 
-const hl7 = new HL7(raw);
+const hl7 = new HL7(raw); // raw: raw HL7 message string
 ```
 
-> ⚠️ **Warning:** _cjs support under development._
+_Segment_ is only a typescript type.
+
+### parseOptions
+
+Additional configs for hl7 parsing and building.
+
+| Parameter      | Default Value |               Expected                |
+| :------------- | :-----------: | :-----------------------------------: |
+| fieldDelim     |     `\|`      |               `string`                |
+| repeatingDelim |      `~`      |               `string`                |
+| componentDelim |      `^`      |               `string`                |
+| subCompDelim   |     `\&`      |               `string`                |
+| eolDelim       |  `\r?\n\|\r`  | `\r?\n\|\r` \| `\r\n` \| `\n` \| `\r` |
+| buildEolChar   |    `\r\n`     |               `string`                |
 
 ## API References
 
 <details id="get">
-<summary><code>get</code> ⚒️ </summary>
+<summary><code>get</code></summary>
 
-_Documentation under progress._
+Gets the value from a segment.
+
+| Parameter         |   Type   | Requirement  |
+| :---------------- | :------: | :----------: |
+| field             | `string` | **Required** |
+| repeatingIndex    | `number` |  Default: 0  |
+| subComponentIndex | `number` |  Default: 0  |
+
+Return: `string` | `null`
+
+```typescript
+const zyxSegment = hl7.getSegment('ZYX');
+
+zyxSegment?.get('ZYX.5.2', 1, 2);
+```
+
+### Examples
+
+```
+ZYX|1|A|B|C|Repeat1~Component1^Component2~SubComp1&SubComp2^Component2~Repeat3
+```
+
+```typescript
+// Get entire segment
+zyxSegment.get('ZYX'); // ZYX|1|A|B|C|Repeat1~Component1^Component2~SubComp1&SubComp2^Component2~Repeat3
+
+// Get repeating fields
+zyxSegment.get('ZYX.5'); // Repeat1
+zyxSegment.get('ZYX.5', 2); // SubComp1&SubComp2^Component2
+zyxSegment.get('ZYX.5', -1); // Repeat1~Component1^Component2~SubComp1&SubComp2^Component2~Repeat3
+
+// Get component
+zyxSegment.get('ZYX.5.1', 1); // Component1
+
+// Get subcomponent
+zyxSegment.get('ZYX.5.1', 2); // SubComp1
+zyxSegment.get('ZYX.5.1', 2, 1); // SubComp2
+zyxSegment.get('ZYX.5.1', 2, -1); // SubComp1&SubComp2
+```
 
 </details>
 
 <details id="set">
-<summary><code>set</code> ⚒️ </summary>
+<summary><code>set</code></summary>
 
-_Documentation under progress._
+Sets the value of on a segment.
+
+| Parameter         |   Type   | Requirement  |
+| :---------------- | :------: | :----------: |
+| field             | `string` | **Required** |
+| value             | `string` | **Required** |
+| repeatingIndex    | `number` |  Default: 0  |
+| subComponentIndex | `number` |  Default: 0  |
+
+```typescript
+const zyxSegment = hl7.getSegment('ZYX');
+
+zyxSegment?.set('ZYX.5.2', 'ABCD', 1, 2); // ZYX|||||~^&&ABCD
+```
 
 </details>
 
@@ -72,12 +136,12 @@ for (const obrSegment of obrSegments) {
 Returns an array of Segments matching the _type_, starting from the _startSegment_ until encountering a segment listed in _stopSegmentType_.  
 Setting _consecutive_ as `true` will return first set consecutive of matching Segments.
 
-| Parameter       |    Type    | Requirement  |
-| :-------------- | :--------: | :----------: |
-| startSegment    | `Segment`  | **Required** |
-| type            |  `string`  | **Required** |
-| stopSegmentType | `string[]` | **Required** |
-| consecutive     | `boolean`  |   Optional   |
+| Parameter       |    Type    |  Requirement   |
+| :-------------- | :--------: | :------------: |
+| startSegment    | `Segment`  |  **Required**  |
+| type            |  `string`  |  **Required**  |
+| stopSegmentType | `string[]` |    Optional    |
+| consecutive     | `boolean`  | Default: false |
 
 Return: `Segment[]`
 
@@ -211,12 +275,13 @@ Moves _segment_ before _targetSegment_.
 <details id="reindexSegments">
 <summary><code>reindexSegments</code></summary>
 
-Reindexes segments based on the _resetRules_.
+Reindexes segments based on _resetRules_.
 
-| Parameter  |  Type  | Requirement  |
-| :--------- | :----: | :----------: |
-| resetRules | object | **Required** |
-| field      | string |   Optional   |
+| Parameter  |  Type  |  Requirement   |
+| :--------- | :----: | :------------: |
+| resetRules | object |  **Required**  |
+| startIndex | number |   Default: 1   |
+| field      | string | Default: '1.1' |
 
 **resetRule**
 
@@ -228,7 +293,7 @@ Segment field where index will be set. Defaults to '1.1'.
 
 Example:
 
-```javascript
+```typescript
 hl7.reindexSegments({ OBR: [], OBX: ['OBR'], NTE: ['OBR', 'OBX'] });
 ```
 
@@ -237,7 +302,20 @@ Here,
 - NTE segments will have index restarting from 1 after each OBR or OBX segment is encountered.
 - OBR segments will have index starting from one and incrementing since no reset segments were provided.
 
-> _Note:_ `reindexSegments` sets the segment index value. This doesnt move the segments by itself.
+> _Note:_ `reindexSegments` sets the segment index value. This doesn't move the segments by itself.
+
+</details>
+
+<details id="transform">
+<summary><code>transform</code> 💀 </summary>
+
+> ⚠️ **Deprecated**: This method is triggered internally and doesn't need to be invoked manually.
+
+Transforms the raw HL7 message suitable for manipulation and building.
+
+```typescript
+hl7.transform(); // depricated
+```
 
 </details>
 
