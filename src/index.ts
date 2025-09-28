@@ -503,8 +503,8 @@ class HL7 {
     let curr = this.head;
     const indexMap: Record<string, number> = {};
 
-    for (const key in resetRules) {
-      indexMap[key] = 1;
+    for (const key of Object.keys(resetRules)) {
+      indexMap[key] = startIndex;
     }
 
     while (curr) {
@@ -516,7 +516,7 @@ class HL7 {
       for (const [segmentType, resetTriggers] of Object.entries(resetRules)) {
         for (const resetTrigger of resetTriggers) {
           if (segment.type === resetTrigger) {
-            indexMap[segmentType] = 1;
+            indexMap[segmentType] = startIndex;
             break;
           }
         }
