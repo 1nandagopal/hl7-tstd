@@ -59,36 +59,26 @@ class Segment {
 
     if (!field || !/^[A-Z\d]{3}(\.\d+){0,2}$/.test(field))
       throw new Error(`Invalid parameter: field [${field}]`);
-
-    if (typeof repeatingIndex !== 'number' && repeatingIndex < -1)
+    if (typeof repeatingIndex !== 'number' || repeatingIndex < -1)
       throw new Error(`Invalid parameter: repeatingIndex [${repeatingIndex}]`);
-
-    if (typeof subComponentIndex !== 'number' && subComponentIndex < -1)
+    if (typeof subComponentIndex !== 'number' || subComponentIndex < -1)
       throw new Error(`Invalid parameter: subComponentIndex [${subComponentIndex}]`);
 
+    const { fieldDelim, repeatingDelim, componentDelim, subCompDelim } = this.parseOptions;
     const [type, fieldIdx, compIdx] = field.split('.');
 
     if (type !== this.type)
       throw new Error(
-        `Invalid parameter: 'field' [${field}]. Cannot get ${field} from ${this.type} segment.`
+        `Invalid parameter: 'field' [${field}]. Cannot get [${field}] from [${this.type}] segment.`
       );
-
-    // TODO---------
-    if (compIdx && repeatingIndex < 0)
-      throw new Error(
-        `Invalid Repeating index: '${repeatingIndex}' (type:${typeof repeatingIndex})\nCannot get All repeating fields when getting component ${field}`
-      );
-
-    const { fieldDelim, repeatingDelim, componentDelim, subCompDelim } = this.parseOptions;
 
     if (fieldIdx && compIdx) {
       if (subComponentIndex === -1) {
-        const component =
-          this.data[`${type}.${fieldIdx}`]?.[repeatingIndex]?.[`${type}.${fieldIdx}.${compIdx}`];
-
-        if (!component) return null;
-
-        return component.join(subCompDelim) ?? null;
+        return (
+          this.data[`${type}.${fieldIdx}`]?.[repeatingIndex]?.[
+            `${type}.${fieldIdx}.${compIdx}`
+          ]?.join(subCompDelim) ?? null
+        );
       } else {
         return (
           this.data[`${type}.${fieldIdx}`]?.[repeatingIndex]?.[`${type}.${fieldIdx}.${compIdx}`]?.[
@@ -97,36 +87,25 @@ class Segment {
         );
       }
     } else if (fieldIdx) {
-      if (repeatingIndex === -1) {
-        const field = this.data[`${type}.${fieldIdx}`];
-        const repeatingFieldsArr: string[] = [];
+      let field =
+        repeatingIndex === -1
+          ? this.data[`${type}.${fieldIdx}`]
+          : [this.data[`${type}.${fieldIdx}`]?.[repeatingIndex]];
+      const repeatingFieldsArr: string[] = [];
 
-        if (!field) return null;
+      if (!field || !field[0]) return null;
 
-        for (const repeatingField of field) {
-          const componentsArr: string[] = [];
+      for (const repeatingField of field) {
+        const componentsArr: string[] = [];
 
-          for (const compKey in repeatingField) {
-            componentsArr.push(repeatingField[compKey]!.join(subCompDelim));
-          }
-
-          repeatingFieldsArr.push(componentsArr.join(componentDelim));
+        for (const compKey in repeatingField) {
+          componentsArr.push(repeatingField[compKey]!.join(subCompDelim));
         }
 
-        return repeatingFieldsArr.join(repeatingDelim);
-      } else {
-        const component = this.data[`${type}.${fieldIdx}`]?.[repeatingIndex];
-
-        if (!component) return null;
-
-        const componentsArr = [];
-
-        for (const compKey in component) {
-          componentsArr.push(component[compKey]?.join(subCompDelim));
-        }
-
-        return componentsArr.join(componentDelim);
+        repeatingFieldsArr.push(componentsArr.join(componentDelim));
       }
+
+      return repeatingFieldsArr.join(repeatingDelim);
     } else {
       if (!this.data) return null;
 
@@ -285,9 +264,7 @@ class HL7 {
 
       if (type === 'MSH') {
         segment.data['MSH.2'] = [
-          {
-            'MSH.2.1': [`${componentDelim}${repeatingDelim}\\${subCompDelim}`],
-          },
+          { 'MSH.2.1': [`${componentDelim}${repeatingDelim}\\${subCompDelim}`] },
         ];
       }
 
@@ -347,8 +324,11 @@ class HL7 {
     let curr = this.head;
 
     while (curr) {
-      if (type && type === curr.data.type) segments.push(curr.data);
-      else segments.push(curr.data);
+      if (type) {
+        if (type === curr.data.type) segments.push(curr.data);
+      } else {
+        segments.push(curr.data);
+      }
 
       curr = curr.next;
     }
@@ -359,12 +339,14 @@ class HL7 {
   getSegmentsAfter(
     startSegment: Segment,
     type: TSegmentType,
-    stopSegmentType: TSegmentType[],
+    stopSegmentType: TSegmentType[] = [],
     consecutive = false
   ) {
     if (!startSegment || !(startSegment instanceof Segment))
       throw new Error(`Invalid parameter: 'startSegment'`);
     if (!/^[A-Z\d]{3}$/.test(type)) throw new Error(`Invalid parameter: 'type' [${type}]`);
+    if (!stopSegmentType || !Array.isArray(stopSegmentType))
+      throw new Error(`Invalid parameter: 'stopSegmentType'`);
     if (typeof consecutive !== 'boolean')
       throw new Error(`Invalid parameter: 'consecutive' [${consecutive}]`);
 
@@ -376,7 +358,7 @@ class HL7 {
     let curr = startNode.next;
 
     while (curr) {
-      if (stopSegmentType.includes(curr.data.type)) break;
+      if (stopSegmentType.length && stopSegmentType.includes(curr.data.type)) break;
 
       if (curr.data.type === type) res.push(curr.data);
       else if (consecutive && res.length) break;
@@ -438,9 +420,10 @@ class HL7 {
 
   moveSegmentAfter(segment: Segment, targetSegment: Segment) {
     if (!segment || !(segment instanceof Segment)) throw new Error(`Invalid parameter: 'segment'`);
-
     if (!targetSegment || !(targetSegment instanceof Segment))
       throw new Error(`Invalid parameter: 'targetSegment'`);
+
+    if (segment === targetSegment) return;
 
     const node = this.getNode(segment);
 
@@ -465,9 +448,10 @@ class HL7 {
 
   moveSegmentBefore(segment: Segment, targetSegment: Segment) {
     if (!segment || !(segment instanceof Segment)) throw new Error(`Invalid parameter: 'segment'`);
-
     if (!targetSegment || !(targetSegment instanceof Segment))
       throw new Error(`Invalid parameter: 'targetSegment'`);
+
+    if (segment === targetSegment) return;
 
     const node = this.getNode(segment);
 
@@ -493,11 +477,9 @@ class HL7 {
   reindexSegments(resetRules: Record<TSegmentType, TSegmentType[]>, startIndex = 1, field = '1.1') {
     if (!resetRules || typeof resetRules !== 'object')
       throw new Error(`Invalid parameter: 'resetRules'`);
-
     if (!startIndex || typeof startIndex !== 'number')
       throw new Error(`Invalid parameter: 'startIndex' [${startIndex}]`);
-
-    if (field && !/^(\d)(\.\d+){0,1}$/.test(field))
+    if (field && !/^(\d+)(\.\d+){0,1}$/.test(field))
       throw new Error(`Invalid parameter: 'field' [${field}]`);
 
     let curr = this.head;
