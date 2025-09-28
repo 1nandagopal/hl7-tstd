@@ -211,6 +211,9 @@ class HL7 {
     this.transform();
   }
 
+  /**
+   * @deprecated This method is triggered internally and doesnt need to be invoked manually.
+   */
   transform() {
     if (!this.raw.startsWith('MSH')) {
       throw new Error(
