@@ -466,7 +466,11 @@ class HL7 {
     if (targetNode === this.head) this.head = this.head.prev;
   }
 
-  reindexSegments(resetRules: Record<TSegmentType, TSegmentType[]>, startIndex = 1, field = '1.1') {
+  reindexSegments(
+    resetRules: { [k in TSegmentType]?: TSegmentType[] },
+    startIndex = 1,
+    field = '1.1'
+  ) {
     if (!resetRules || typeof resetRules !== 'object')
       throw new Error(`Invalid parameter: 'resetRules'`);
     if (!startIndex || typeof startIndex !== 'number')
@@ -478,6 +482,11 @@ class HL7 {
     const indexMap: Record<string, number> = {};
 
     for (const key of Object.keys(resetRules)) {
+      if (!Array.isArray(resetRules[key]))
+        throw new Error(
+          `Invalid parameter: 'resetRules'. Expected key [${key}] value to be an array.`
+        );
+
       indexMap[key] = startIndex;
     }
 
@@ -488,7 +497,7 @@ class HL7 {
         segment.set(`${segment.type}.${field}`, String(indexMap[segment.type]!++));
 
       for (const [segmentType, resetTriggers] of Object.entries(resetRules)) {
-        for (const resetTrigger of resetTriggers) {
+        for (const resetTrigger of resetTriggers!) {
           if (segment.type === resetTrigger) {
             indexMap[segmentType] = startIndex;
             break;
