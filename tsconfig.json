@@ -4,6 +4,7 @@
     "outDir": "./dist",
     "lib": ["ES2017"],
     "module": "es6",
+    "moduleResolution": "bundler",
     "target": "es2017",
     "sourceMap": true,
     "declaration": true,
@@ -22,5 +23,6 @@
     "noUncheckedSideEffectImports": true,
     "moduleDetection": "force",
     "skipLibCheck": true
-  }
+  },
+  "include": ["src/**/*"]
 }
