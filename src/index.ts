@@ -134,7 +134,7 @@ class Segment {
   set(field: string, value: string, repeatingIndex = 0, subComponentIndex = 0) {
     if (!field || !/^[A-Z\d]{3}(\.\d+){1,2}$/.test(field))
       throw new Error(`Invalid parameter: 'field' [${field}]`);
-    if (!value || typeof value !== 'string')
+    if (value == null || typeof value !== 'string')
       throw new Error(`Invalid parameter: 'value' [${value}]`);
     if (typeof repeatingIndex !== 'number' && repeatingIndex < 0)
       throw new Error(`Invalid parameter: 'repeatingIndex' [${repeatingIndex}]`);
