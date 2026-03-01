@@ -3,12 +3,19 @@
 A simple package to create, parse & transform HL7 message.
 
 ```typescript
-import HL7, { Segment } from 'hl7-tstd';
+// CJS
+const { HL7 } = require('hl7-tstd');
+
+// ESM
+import HL7, { type Segment } from 'hl7-tstd';
+
+// TS
+import HL7, { type Segment } from 'hl7-tstd';
 
 const hl7 = new HL7(raw); // raw: raw HL7 message string
 ```
 
-_Segment_ is only a typescript type.
+> ⚠️ _Warning:_ `Segment` import is provided only to facilitate typing variables. It is not intended for intantiation. Stick to type-only import.
 
 ### parseOptions
 
@@ -19,7 +26,7 @@ Additional configs for hl7 parsing and building.
 | fieldDelim     |     `\|`      |               `string`                |
 | repeatingDelim |      `~`      |               `string`                |
 | componentDelim |      `^`      |               `string`                |
-| subCompDelim   |     `\&`      |               `string`                |
+| subCompDelim   |      `&`      |               `string`                |
 | eolDelim       |  `\r?\n\|\r`  | `\r?\n\|\r` \| `\r\n` \| `\n` \| `\r` |
 | buildEolChar   |    `\r\n`     |               `string`                |
 
@@ -307,7 +314,7 @@ Here,
 </details>
 
 <details id="transform">
-<summary><code>transform</code> 💀 </summary>
+<summary><code>transform</code> 🗑 </summary>
 
 > ⚠️ **Deprecated**: This method is triggered internally and doesn't need to be invoked manually.
 

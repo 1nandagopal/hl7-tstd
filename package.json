@@ -29,10 +29,11 @@
     "node": ">=8.0.0"
   },
   "scripts": {
-    "build": "rimraf dist && tsup"
+    "build": "tsup"
   },
   "keywords": [
     "hl7",
+    "standard",
     "parse",
     "create",
     "transform",
@@ -50,8 +51,7 @@
     "url": "https://github.com/1nandagopal/hl7-tstd/issues"
   },
   "devDependencies": {
-    "rimraf": "^6.0.1",
-    "tsup": "^8.5.0",
+    "tsup": "^8.5.1",
     "typescript": "^5.9.2"
   }
 }
