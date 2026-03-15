@@ -10,7 +10,7 @@ export class Segment {
     parseOptions?: Prettify<Omit<TParseOptions, 'eolDelim' | 'buildEolChar'>>,
   ) {
     if (!type || !/^[A-Z\d]{3}(\.\d+){0,2}$/.test(type))
-      throw new Error(`Invalid parameter: 'field' [${type}]`);
+      throw new Error(`Invalid parameter: 'type' [${type}]`);
     this.data[type === 'MSH' ? '1' : '0'] = [{ 1: [type] }];
     this.parseOptions = {
       fieldDelim: parseOptions?.fieldDelim ?? '|',
@@ -28,9 +28,9 @@ export class Segment {
 
   get(field: string, repeatingIndex: number | true = 0, subComponentIndex: number | true = 0) {
     const validate = (val: number | true) =>
-      !((typeof val === 'number' && val >= 0) || val == true);
+      !((typeof val === 'number' && val >= 0) || val === true);
 
-    if (!field || !/^[A-Z\d]{3}(\.\d+){0,2}$/.test(field))
+    if (!field || !/^[A-Z\d]{3}$/.test(field))
       throw new Error(`Invalid parameter: 'field' [${field}]`);
     if (validate(repeatingIndex))
       throw new Error(`Invalid parameter: 'repeatingIndex' [${repeatingIndex}]`);
@@ -55,7 +55,7 @@ export class Segment {
     subComponentIndex: number | true = 0,
   ) {
     const validate = (val: number | true) =>
-      !((typeof val === 'number' && val >= 0) || val == true);
+      !((typeof val === 'number' && val >= 0) || val === true);
 
     if (!field || !/^[A-Z\d]{3}(\.\d+){1,2}$/.test(field))
       throw new Error(`Invalid parameter: 'field' [${field}]`);

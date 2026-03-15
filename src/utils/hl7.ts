@@ -15,8 +15,11 @@ export class HL7 {
       componentDelim: parseOptions?.componentDelim ?? '^',
       subCompDelim: parseOptions?.subCompDelim ?? '&',
       eolDelim: parseOptions?.eolDelim ?? '\r?\n|\r',
-      buildEolChar: parseOptions?.buildEolChar ?? '\r\n',
+      buildEolChar: parseOptions?.buildEolChar ?? '\r',
     };
+
+    if (this.parseOptions.fieldDelim.length !== 1) throw new Error('Invalid field delimiter');
+
     this.#dll = new DLL();
     this.transform();
   }
@@ -33,9 +36,11 @@ export class HL7 {
       throw new Error('Invalid EOL character. Expected \\r?\\n\|\\r, \\r\\n, \\n, \\r');
     }
 
+    this.#dll = new DLL();
+
     const segmentsStrArr = this.raw
       .split(RegExp(this.parseOptions.eolDelim))
-      .filter((segmentStr) => this.validateSegment(segmentStr));
+      .filter((segmentStr) => Boolean(segmentStr) && this.validateSegment(segmentStr));
 
     const { fieldDelim, repeatingDelim, componentDelim, subCompDelim } = this.parseOptions;
 
@@ -64,7 +69,7 @@ export class HL7 {
         fieldIdx++;
       }
 
-      if (type === 'MSH' && segment.data[2]?.[0] && fields[1]) {
+      if (type === 'MSH' && fields[1]) {
         segment.data[2] = [{ 1: [fields[1]] }];
       }
 
@@ -116,8 +121,8 @@ export class HL7 {
   }
 
   getSegmentsAfter(
-    type: SegmentType,
     startSegment: Segment,
+    type: SegmentType,
     stopSegmentType: SegmentType[] = [],
     consecutive = false,
   ): Segment[] {
@@ -144,7 +149,7 @@ export class HL7 {
     if (!/^[A-Z\d]{3}$/.test(type)) throw new Error(`Invalid parameter: 'type' [${type}]`);
     if (!targetSegment || !(targetSegment instanceof Segment))
       throw new Error(`Invalid parameter: 'targetSegment'`);
-    if (this.#dll.getNodeFromSegment(targetSegment))
+    if (!this.#dll.getNodeFromSegment(targetSegment))
       throw new Error(`Failed to locate: 'targetSegment' [${targetSegment.type}]`);
 
     return this.#dll.appendNewSegment(new Segment(type, this.parseOptions), targetSegment);
@@ -154,8 +159,8 @@ export class HL7 {
     if (!/^[A-Z\d]{3}$/.test(type)) throw new Error(`Invalid parameter: 'type' [${type}]`);
     if (!targetSegment || !(targetSegment instanceof Segment))
       throw new Error(`Invalid parameter: 'targetSegment'`);
-    if (this.#dll.getNodeFromSegment(targetSegment))
-      throw new Error(`Failed to locate: 'startSegment' [${targetSegment.type}]`);
+    if (!this.#dll.getNodeFromSegment(targetSegment))
+      throw new Error(`Failed to locate: 'targetSegment' [${targetSegment.type}]`);
 
     return this.#dll.prependNewSegment(new Segment(type, this.parseOptions), targetSegment);
   }
@@ -168,7 +173,7 @@ export class HL7 {
     for (const segment of segments) {
       if (!segment || !(segment instanceof Segment))
         throw new Error(`Invalid parameter: 'segments'`);
-      if (this.#dll.getNodeFromSegment(segment))
+      if (!this.#dll.getNodeFromSegment(segment))
         throw new Error(`Failed to locate: 'segment' [${segment.type}]`);
 
       this.#dll.deleteSegment(segment);
@@ -241,10 +246,6 @@ export class HL7 {
   }
 
   private validateSegment(segment: string) {
-    if (/^[A-Z\d]{3}\|/.test(segment)) {
-      return true;
-    }
-
-    throw new Error(`Invalid Segment: [${segment.substring(0, 4)}]`);
+    return new RegExp(`^[A-Z\d]{3}${this.parseOptions.fieldDelim}`).test(segment);
   }
 }

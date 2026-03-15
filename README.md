@@ -2,20 +2,27 @@
 
 A simple package to create, parse & transform HL7 message.
 
-```typescript
+![GitHub License](https://img.shields.io/github/license/1nandagopal/hl7-tstd)
+
+```javascript
 // CJS
 const { HL7 } = require('hl7-tstd');
+```
 
+```javascript
 // ESM
-import HL7, { type Segment } from 'hl7-tstd';
+import { HL7 } from 'hl7-tstd';
+```
 
+```typescript
 // TS
-import HL7, { type Segment } from 'hl7-tstd';
+import { HL7, type Segment } from 'hl7-tstd';
 
 const hl7 = new HL7(raw); // raw: raw HL7 message string
 ```
 
-> ⚠️ _Warning:_ `Segment` import is provided only to facilitate typing variables. It is not intended for intantiation. Stick to type-only import.
+> [!WARNING]
+> ⚠️ `Segment` is only a type export aimed at helping with type annotation. Using it for other purposes can lead to runtime exceptions.
 
 ### parseOptions
 
@@ -28,7 +35,7 @@ Additional configs for hl7 parsing and building.
 | componentDelim |      `^`      |               `string`                |
 | subCompDelim   |      `&`      |               `string`                |
 | eolDelim       |  `\r?\n\|\r`  | `\r?\n\|\r` \| `\r\n` \| `\n` \| `\r` |
-| buildEolChar   |    `\r\n`     |               `string`                |
+| buildEolChar   |     `\r`      |               `string`                |
 
 ## API References
 
@@ -37,11 +44,11 @@ Additional configs for hl7 parsing and building.
 
 Gets the value from a segment.
 
-| Parameter         |   Type   | Requirement  |
-| :---------------- | :------: | :----------: |
-| field             | `string` | **Required** |
-| repeatingIndex    | `number` |  Default: 0  |
-| subComponentIndex | `number` |  Default: 0  |
+| Parameter         |        Type        | Requirement  |
+| :---------------- | :----------------: | :----------: |
+| field             |      `string`      | **Required** |
+| repeatingIndex    | `number` \| `true` |  Default: 0  |
+| subComponentIndex | `number` \| `true` |  Default: 0  |
 
 Return: `string` | `null`
 
@@ -64,7 +71,7 @@ zyxSegment.get('ZYX'); // ZYX|1|A|B|C|Repeat1~Component1^Component2~SubComp1&Sub
 // Get repeating fields
 zyxSegment.get('ZYX.5'); // Repeat1
 zyxSegment.get('ZYX.5', 2); // SubComp1&SubComp2^Component2
-zyxSegment.get('ZYX.5', -1); // Repeat1~Component1^Component2~SubComp1&SubComp2^Component2~Repeat3
+// zyxSegment.get('ZYX.5', -1); // Repeat1~Component1^Component2~SubComp1&SubComp2^Component2~Repeat3
 
 // Get component
 zyxSegment.get('ZYX.5.1', 1); // Component1
@@ -72,7 +79,7 @@ zyxSegment.get('ZYX.5.1', 1); // Component1
 // Get subcomponent
 zyxSegment.get('ZYX.5.1', 2); // SubComp1
 zyxSegment.get('ZYX.5.1', 2, 1); // SubComp2
-zyxSegment.get('ZYX.5.1', 2, -1); // SubComp1&SubComp2
+// zyxSegment.get('ZYX.5.1', 2, -1); // SubComp1&SubComp2
 ```
 
 </details>
@@ -316,6 +323,7 @@ Here,
 <details id="transform">
 <summary><code>transform</code> 🗑 </summary>
 
+> [!WARNING]
 > ⚠️ **Deprecated**: This method is triggered internally and doesn't need to be invoked manually.
 
 Transforms the raw HL7 message suitable for manipulation and building.

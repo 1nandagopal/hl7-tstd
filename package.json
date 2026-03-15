@@ -1,7 +1,7 @@
 {
   "name": "hl7-tstd",
   "version": "1.0.0-dev.0",
-  "description": "A simple package to create, parse & transform HL7 message.",
+  "description": "A simple lightweight package to create, parse & transform HL7 message.",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -50,6 +50,7 @@
   "bugs": {
     "url": "https://github.com/1nandagopal/hl7-tstd/issues"
   },
+  "sideEffects": false,
   "devDependencies": {
     "tsup": "^8.5.1",
     "typescript": "^5.9.2"

@@ -107,7 +107,7 @@ export class DLL {
 
     const targetNode = this.getNodeFromSegment(targetSegment);
 
-    if (!targetNode) throw new Error(); // Todo
+    if (!targetNode) throw new Error('Failed to locate targetNode');
 
     this.moveNodeBefore(newNode, targetNode);
 
