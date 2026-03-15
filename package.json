@@ -1,6 +1,6 @@
 {
   "name": "hl7-tstd",
-  "version": "1.0.0-dev.0",
+  "version": "1.0.0-dev.1",
   "description": "A simple lightweight package to create, parse & transform HL7 message.",
   "type": "module",
   "main": "./dist/index.cjs",
