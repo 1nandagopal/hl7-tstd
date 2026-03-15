@@ -24,7 +24,7 @@ const hl7 = new HL7(raw); // raw: raw HL7 message string
 > [!WARNING]
 > ⚠️ `Segment` is only a type export aimed at helping with type annotation. Using it for other purposes can lead to runtime exceptions.
 
-### parseOptions
+## parseOptions
 
 Additional configs for hl7 parsing and building.
 
@@ -38,6 +38,8 @@ Additional configs for hl7 parsing and building.
 | buildEolChar   |     `\r`      |               `string`                |
 
 ## API References
+
+### Segment
 
 <details id="get">
 <summary><code>get</code></summary>
@@ -58,28 +60,34 @@ const zyxSegment = hl7.getSegment('ZYX');
 zyxSegment?.get('ZYX.5.2', 1, 2);
 ```
 
-### Examples
+#### Examples
 
-```
+```plaintext
 ZYX|1|A|B|C|Repeat1~Component1^Component2~SubComp1&SubComp2^Component2~Repeat3
 ```
 
 ```typescript
-// Get entire segment
-zyxSegment.get('ZYX'); // ZYX|1|A|B|C|Repeat1~Component1^Component2~SubComp1&SubComp2^Component2~Repeat3
+// Get segment
+zyx.get('ZYX'); // ZYX|1|A|B|C|Repeat1
+zyx.get('ZYX', true); // ZYX|1|A|B|C|Repeat1~Component1^Component2~SubComp1^Component2~Repeat3
+zyx.get('ZYX', true, true); //  ZYX|1|A|B|C|Repeat1~Component1^Component2~SubComp1&SubComp2^Component2~Repeat3  <- entire segment string
 
-// Get repeating fields
-zyxSegment.get('ZYX.5'); // Repeat1
-zyxSegment.get('ZYX.5', 2); // SubComp1&SubComp2^Component2
-// zyxSegment.get('ZYX.5', -1); // Repeat1~Component1^Component2~SubComp1&SubComp2^Component2~Repeat3
+// Get repeating field
+zyx.get('ZYX.5'); // Repeat1
+zyx.get('ZYX.5', 1); // Component1^Component2
+zyx.get('ZYX.5', 2); // SubComp1^Component2
+zyx.get('ZYX.5', true); // Repeat1~Component1^Component2~SubComp1^Component2~Repeat3
+zyx.get('ZYX.5', true, true); // Repeat1~Component1^Component2~SubComp1&SubComp2^Component2~Repeat3  <-  entire ZYX.5 field
 
 // Get component
-zyxSegment.get('ZYX.5.1', 1); // Component1
+zyx.get('ZYX.5.1', 1); // Component1
+zyx.get('ZYX.5.1', 2); // SubComp1
+zyx.get('ZYX.5.1', true); // Repeat1~Component1~SubComp1~Repeat3
 
 // Get subcomponent
-zyxSegment.get('ZYX.5.1', 2); // SubComp1
-zyxSegment.get('ZYX.5.1', 2, 1); // SubComp2
-// zyxSegment.get('ZYX.5.1', 2, -1); // SubComp1&SubComp2
+zyx.get('ZYX.5.1', 2, 1); // SubComp2
+zyx.get('ZYX.5.1', true, 1); // ~~SubComp2~
+zyx.get('ZYX.5.1', true, true); // Repeat1~Component1~SubComp1&SubComp2~Repeat3  <- entire ZYX.5.1 sub components
 ```
 
 </details>
@@ -89,12 +97,12 @@ zyxSegment.get('ZYX.5.1', 2, 1); // SubComp2
 
 Sets the value of on a segment.
 
-| Parameter         |   Type   | Requirement  |
-| :---------------- | :------: | :----------: |
-| field             | `string` | **Required** |
-| value             | `string` | **Required** |
-| repeatingIndex    | `number` |  Default: 0  |
-| subComponentIndex | `number` |  Default: 0  |
+| Parameter         |        Type        | Requirement  |
+| :---------------- | :----------------: | :----------: |
+| field             |      `string`      | **Required** |
+| value             |      `string`      | **Required** |
+| repeatingIndex    | `number` \| `true` |  Default: 0  |
+| subComponentIndex | `number` \| `true` |  Default: 0  |
 
 ```typescript
 const zyxSegment = hl7.getSegment('ZYX');
@@ -103,6 +111,8 @@ zyxSegment?.set('ZYX.5.2', 'ABCD', 1, 2); // ZYX|||||~^&&ABCD
 ```
 
 </details>
+
+### HL7
 
 <details id="getSegment">
 <summary><code>getSegment</code></summary>
@@ -160,7 +170,7 @@ Setting _consecutive_ as `true` will return first set consecutive of matching Se
 Return: `Segment[]`
 
 ```typescript
-const obrSegment = hl7.getSegment('OBX');
+const obrSegment = hl7.getSegment('OBR');
 
 const obxAfterObr = hl7.getSegmentsAfter(obrSegment!, 'OBX', ['OBR']);
 ```
@@ -329,13 +339,13 @@ Here,
 Transforms the raw HL7 message suitable for manipulation and building.
 
 ```typescript
-hl7.transform(); // depricated
+hl7.transform(); // deprecated
 ```
 
 </details>
 
 ---
 
-### Attribution
+## Attribution
 
 This project includes code inspired from [hl7-standard](https://github.com/ironbridgecorp/hl7-standard), licensed under the Apache License 2.0.

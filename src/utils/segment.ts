@@ -9,8 +9,9 @@ export class Segment {
     readonly type: SegmentType,
     parseOptions?: Prettify<Omit<TParseOptions, 'eolDelim' | 'buildEolChar'>>,
   ) {
-    if (!type || !/^[A-Z\d]{3}(\.\d+){0,2}$/.test(type))
+    if (!type || !/^[A-Z0-9]{3}$/.test(type))
       throw new Error(`Invalid parameter: 'type' [${type}]`);
+
     this.data[type === 'MSH' ? '1' : '0'] = [{ 1: [type] }];
     this.parseOptions = {
       fieldDelim: parseOptions?.fieldDelim ?? '|',
@@ -30,7 +31,7 @@ export class Segment {
     const validate = (val: number | true) =>
       !((typeof val === 'number' && val >= 0) || val === true);
 
-    if (!field || !/^[A-Z\d]{3}$/.test(field))
+    if (!field || !/^[A-Z0-9]{3}(\.\d+){0,2}$/.test(field))
       throw new Error(`Invalid parameter: 'field' [${field}]`);
     if (validate(repeatingIndex))
       throw new Error(`Invalid parameter: 'repeatingIndex' [${repeatingIndex}]`);
@@ -45,7 +46,7 @@ export class Segment {
         `Invalid parameter: 'field'. Cannot get [${field}] from [${this.type}] segment.`,
       );
 
-    return this.#traverse(this.data, path);
+    return this.#traverse(this.data, path) || null;
   }
 
   set(
@@ -75,7 +76,7 @@ export class Segment {
     if (!fieldIdx || !Number(fieldIdx)) throw new Error(`Invalid parameter: 'field' [${field}]`);
 
     for (let i = type === 'MSH' ? 2 : 1; i <= Number(fieldIdx); i++) {
-      if (!this.data?.[i]?.[0]?.[1]?.[0] == null) this.data[i] = [{ 1: [''] }];
+      if (this.data?.[i]?.[0]?.[1]?.[0] == null) this.data[i] = [{ 1: [''] }];
     }
 
     if (Number.isInteger(repeatingIndex)) {

@@ -246,6 +246,7 @@ export class HL7 {
   }
 
   private validateSegment(segment: string) {
-    return new RegExp(`^[A-Z\d]{3}${this.parseOptions.fieldDelim}`).test(segment);
+    if (new RegExp(`^[A-Z0-9]{3}\\${this.parseOptions.fieldDelim}`).test(segment)) return true;
+    else throw new Error(`Invalid segment: ${segment}`);
   }
 }

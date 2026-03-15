@@ -87,7 +87,7 @@ export class DLL {
       return;
     }
 
-    if (!targetNode) throw new Error('Failed to locate node targetNode');
+    if (!targetNode) throw new Error('Failed to locate targetNode');
     if (node === targetNode || targetNode.next === node) return;
 
     this.#detachNode(node);
@@ -107,7 +107,7 @@ export class DLL {
 
     const targetNode = this.getNodeFromSegment(targetSegment);
 
-    if (!targetNode) throw new Error('Failed to locate targetNode');
+    if (!targetNode) throw new Error(`Failed to locate: 'targetSegment' [${targetSegment.type}]`);
 
     this.moveNodeBefore(newNode, targetNode);
 
