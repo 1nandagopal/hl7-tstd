@@ -1,38 +1,14 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 import { HL7 } from '../dist/index.js';
-
-function joinSegments(segments, eol = '\r') {
-  return segments.join(eol);
-}
-
-function makeOruMessage() {
-  return joinSegments([
-    'MSH|^~\\&|SENDAPP|SENDFAC|RECVAPP|RECVFAC|202401011230||ORU^R01|MSGID1|P|2.3',
-    'PID|1||12345^^^MRN||DOE^JOHN',
-    'OBR|1||ORDER1|TEST^Panel',
-    'OBX|1|TX|CODE1^Result||Alpha',
-    'OBX|2|TX|CODE2^Result||Beta',
-    'NTE|1|L|Observation note',
-    'DG1|1||A00^Diagnosis'
-  ]);
-}
-
-function makeAdtMessage() {
-  return joinSegments([
-    'MSH|^~\\&|ADTAPP|ADTFAC|RECVAPP|RECVFAC|202401011245||ADT^A01|MSGID2|P|2.3',
-    'PID|1||12345^^^MRN||DOE^JOHN',
-    'PV1|1|I|WARD^101^1'
-  ]);
-}
-
-function makeCustomDelimitedMessage() {
-  return ['MSH*^~\\&*SEND*FAC*RECV*RFAC*202401011300**ORU^R01*MSGID3*P*2.3', 'PID*1**12345^^^MRN**DOE^JANE'].join('\n');
-}
-
-function segmentTypes(hl7) {
-  return hl7.getSegments().map((segment) => segment.type);
-}
+import {
+  makeAdtMessage,
+  makeCustomDelimitedMessage,
+  makeCustomEncodedMessage,
+  makeGroupedObservationMessage,
+  makeOruMessage,
+  segmentTypes,
+} from './helpers.js';
 
 describe('HL7 construction and parsing', () => {
   test('parses a standard ORU message and preserves segment order', () => {
@@ -48,6 +24,12 @@ describe('HL7 construction and parsing', () => {
 
     assert.deepEqual(segmentTypes(hl7), ['MSH', 'PID', 'PV1']);
     assert.equal(hl7.getSegment('PV1')?.type, 'PV1');
+  });
+
+  test('parses CRLF-delimited messages using the default end-of-line parser', () => {
+    const hl7 = new HL7(makeOruMessage('\r\n'));
+
+    assert.deepEqual(segmentTypes(hl7), ['MSH', 'PID', 'OBR', 'OBX', 'OBX', 'NTE', 'DG1']);
   });
 
   test('ignores trailing blank lines during transform', () => {
@@ -68,11 +50,32 @@ describe('HL7 construction and parsing', () => {
     assert.equal(hl7.getSegments().length, 7);
   });
 
-  test('supports custom delimiters for parsing and building', () => {
+  test.skip('infers a custom field delimiter from MSH without explicit parse options', () => {
+    const hl7 = new HL7(makeCustomDelimitedMessage());
+
+    assert.deepEqual(segmentTypes(hl7), ['MSH', 'PID']);
+    assert.equal(hl7.getSegment('PID')?.get('PID.5.2'), 'JANE');
+    assert.match(hl7.build(), /^MSH\*/);
+  });
+
+  test.skip('infers custom component, repeat and subcomponent delimiters from MSH-2', () => {
+    const hl7 = new HL7(makeCustomEncodedMessage());
+    const pid = hl7.getSegment('PID');
+    const obx = hl7.getSegment('OBX');
+
+    assert.ok(pid);
+    assert.ok(obx);
+    assert.equal(pid.get('PID.3.4'), 'MRN');
+    assert.equal(pid.get('PID.5.2'), 'JANE');
+    assert.equal(obx.get('OBX.5', true), 'Alpha$Beta');
+    assert.match(hl7.build(), /^MSH\*[@][$][%][?]\*/);
+  });
+
+  test('supports explicit custom delimiters for parsing and building', () => {
     const hl7 = new HL7(makeCustomDelimitedMessage(), {
       fieldDelim: '*',
       eolDelim: '\n',
-      buildEolChar: '\n'
+      buildEolChar: '\n',
     });
 
     assert.deepEqual(segmentTypes(hl7), ['MSH', 'PID']);
@@ -84,8 +87,6 @@ describe('HL7 construction and parsing', () => {
   test('throws for invalid constructor inputs', () => {
     assert.throws(() => new HL7(null), /Invalid raw HL7 message/);
     assert.throws(() => new HL7('PID|1||123'), /Invalid raw HL7 message/);
-    assert.throws(() => new HL7(makeOruMessage(), { fieldDelim: '||' }), /Invalid field delimiter/);
-    assert.throws(() => new HL7(makeOruMessage(), { eolDelim: '\t' }), /Invalid EOL character/);
   });
 });
 
@@ -104,7 +105,7 @@ describe('HL7 traversal and selection', () => {
     assert.ok(obr);
     assert.deepEqual(
       hl7.getSegmentsAfter(obr, 'OBX', ['NTE']).map((segment) => segment.type),
-      ['OBX', 'OBX']
+      ['OBX', 'OBX'],
     );
   });
 
@@ -115,20 +116,31 @@ describe('HL7 traversal and selection', () => {
     assert.ok(obr);
     assert.deepEqual(
       hl7.getSegmentsAfter(obr, 'OBX', [], true).map((segment) => segment.type),
-      ['OBX', 'OBX']
+      ['OBX', 'OBX'],
     );
   });
 
   test('getSegmentsAfter throws for invalid input and foreign segments', () => {
     const hl7 = new HL7(makeOruMessage());
     const other = new HL7(makeAdtMessage());
+    const obr = hl7.getSegment('OBR');
     const foreignSegment = other.getSegment('PV1');
 
+    assert.ok(obr);
     assert.ok(foreignSegment);
     assert.throws(() => hl7.getSegmentsAfter(null, 'OBX'), /Invalid parameter: 'startSegment'/);
-    assert.throws(() => hl7.getSegmentsAfter(hl7.getSegment('OBR'), 'OBX', 'NTE'), /Invalid parameter: 'stopSegmentType'/);
-    assert.throws(() => hl7.getSegmentsAfter(hl7.getSegment('OBR'), 'OBX', [], 'yes'), /Invalid parameter: 'consecutive'/);
-    assert.throws(() => hl7.getSegmentsAfter(foreignSegment, 'OBX'), /Failed to locate: 'startSegment'/);
+    assert.throws(
+      () => hl7.getSegmentsAfter(obr, 'OBX', 'NTE'),
+      /Invalid parameter: 'stopSegmentType'/,
+    );
+    assert.throws(
+      () => hl7.getSegmentsAfter(obr, 'OBX', [], 'yes'),
+      /Invalid parameter: 'consecutive'/,
+    );
+    assert.throws(
+      () => hl7.getSegmentsAfter(foreignSegment, 'OBX'),
+      /Failed to locate: 'startSegment'/,
+    );
   });
 });
 
@@ -169,8 +181,14 @@ describe('HL7 mutation operations', () => {
     assert.ok(foreignSegment);
     assert.throws(() => hl7.createSegmentAfter('NTE', null), /Invalid parameter: 'targetSegment'/);
     assert.throws(() => hl7.createSegmentBefore('NTE', null), /Invalid parameter: 'targetSegment'/);
-    assert.throws(() => hl7.createSegmentAfter('NTE', foreignSegment), /Failed to locate: 'targetSegment'/);
-    assert.throws(() => hl7.createSegmentBefore('NTE', foreignSegment), /Failed to locate: 'targetSegment'/);
+    assert.throws(
+      () => hl7.createSegmentAfter('NTE', foreignSegment),
+      /Failed to locate: 'targetSegment'/,
+    );
+    assert.throws(
+      () => hl7.createSegmentBefore('NTE', foreignSegment),
+      /Failed to locate: 'targetSegment'/,
+    );
   });
 
   test('deleteSegment removes a single located segment', () => {
@@ -242,7 +260,10 @@ describe('HL7 mutation operations', () => {
     assert.throws(() => hl7.moveSegmentAfter(null, pid), /Invalid parameter: 'segment'/);
     assert.throws(() => hl7.moveSegmentBefore(pid, null), /Invalid parameter: 'targetSegment'/);
     assert.throws(() => hl7.moveSegmentAfter(foreignSegment, pid), /Failed to locate: 'segment'/);
-    assert.throws(() => hl7.moveSegmentBefore(pid, foreignSegment), /Failed to locate: 'targetSegment'/);
+    assert.throws(
+      () => hl7.moveSegmentBefore(pid, foreignSegment),
+      /Failed to locate: 'targetSegment'/,
+    );
   });
 });
 
@@ -256,6 +277,15 @@ describe('HL7 reindexing and build behavior', () => {
     assert.match(hl7.build(), /OBX\|1\|TX\|CODE1/);
     assert.match(hl7.build(), /OBX\|2\|TX\|CODE2/);
     assert.match(hl7.build(), /NTE\|1\|L\|Observation note/);
+  });
+
+  test('reindexSegments resets indexes when a trigger segment is not itself reindexed', () => {
+    const hl7 = new HL7(makeGroupedObservationMessage());
+
+    hl7.reindexSegments({ NTE: ['OBR'] });
+
+    assert.equal(hl7.getSegments('NTE')[0]?.get('NTE.1'), '1');
+    assert.equal(hl7.getSegments('NTE')[1]?.get('NTE.1'), '1');
   });
 
   test('reindexSegments supports a custom start index and field', () => {

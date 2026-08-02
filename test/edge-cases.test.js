@@ -1,25 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 import { HL7 } from '../dist/index.js';
-
-function joinSegments(segments, eol = '\r') {
-  return segments.join(eol);
-}
-
-function makeBaseMessage() {
-  return joinSegments([
-    'MSH|^~\\&|SENDAPP|SENDFAC|RECVAPP|RECVFAC|202401011230||ORU^R01|MSGID1|P|2.3',
-    'PID|1||12345^^^MRN||DOE^JOHN',
-    'OBR|1||ORDER1|TEST^Panel',
-    'OBX|1|TX|CODE1^Result||Alpha',
-    'NTE|1|L|Observation note',
-    'OBX|2|TX|CODE2^Result||Beta'
-  ]);
-}
-
-function segmentTypes(hl7) {
-  return hl7.getSegments().map((segment) => segment.type);
-}
+import { joinSegments, makeBaseMessage, segmentTypes } from './helpers.js';
 
 describe('Regression and edge-case coverage', () => {
   test('getSegments without a type returns all segments in order', () => {
@@ -78,7 +60,7 @@ describe('Regression and edge-case coverage', () => {
     assert.ok(obr);
     assert.deepEqual(
       hl7.getSegmentsAfter(obr, 'OBX', [], true).map((segment) => segment.get('OBX')),
-      ['OBX|1|TX|CODE1^Result||Alpha']
+      ['OBX|1|TX|CODE1^Result||Alpha'],
     );
   });
 
@@ -86,7 +68,7 @@ describe('Regression and edge-case coverage', () => {
     const raw = joinSegments([
       'MSH|^~\\&|SENDAPP|SENDFAC|RECVAPP|RECVFAC|202401011230||ORU^R01|MSGID1|P|2.3',
       'PID|1||12345^^^MRN||DOE^JOHN',
-      'bad line that is not an HL7 segment'
+      'bad line that is not an HL7 segment',
     ]);
 
     assert.throws(() => new HL7(raw), /Invalid segment: bad line that is not an HL7 segment/);
