@@ -4,6 +4,16 @@ A simple package to create, parse & transform HL7 message.
 
 ![GitHub License](https://img.shields.io/github/license/1nandagopal/hl7-tstd)
 
+> [!WARNING]
+> The latest release has known bugs.
+> Please use the latest **`beta`** version until these issues are resolved.
+
+```bash
+npm i hl7-tstd@beta
+```
+
+---
+
 ```javascript
 // CJS
 const { HL7 } = require('hl7-tstd');
@@ -18,7 +28,7 @@ import { HL7 } from 'hl7-tstd';
 // TS
 import { HL7, type Segment } from 'hl7-tstd';
 
-const hl7 = new HL7(raw); // raw: raw HL7 message string
+const hl7 = new HL7(raw); // raw: HL7 message string
 ```
 
 > [!WARNING]
