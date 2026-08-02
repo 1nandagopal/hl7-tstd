@@ -46,7 +46,7 @@ export class Segment {
         `Invalid parameter: 'field'. Cannot get [${field}] from [${this.type}] segment.`,
       );
 
-    return this.#traverse(this.data, path) || null;
+    return this.#traverse(this.data, path) ?? null;
   }
 
   set(

@@ -225,23 +225,24 @@ export class HL7 {
       throw new Error(`Invalid parameter: 'field' [${field}]`);
 
     const segments = this.getSegments();
-    const indexMap: Partial<Record<SegmentType, number>> = {};
-    const indexResetTriggerMap: Partial<Record<SegmentType, SegmentType[]>> = {};
+    const idxMap: Partial<Record<SegmentType, number>> = {};
+    const idxResetTriggerMap: Partial<Record<SegmentType, SegmentType[]>> = {};
 
     for (const [seg, resetTriggerSegs] of Object.entries(reindexConfig)) {
-      indexMap[seg] = startIndex;
+      idxMap[seg] = startIndex;
 
       if (resetTriggerSegs)
-        for (const key of resetTriggerSegs) (indexResetTriggerMap[key] ??= []).push(seg);
+        for (const resetTriggerSeg of resetTriggerSegs)
+          (idxResetTriggerMap[resetTriggerSeg] ??= []).push(seg);
     }
 
     for (const segment of segments) {
       if (reindexConfig[segment.type]) {
-        segment.set(`${segment.type}.${field}`, String(indexMap[segment.type]++));
-
-        if (indexResetTriggerMap[segment.type])
-          for (const seg of indexResetTriggerMap[segment.type]!) indexMap[seg] = startIndex;
+        segment.set(`${segment.type}.${field}`, String(idxMap[segment.type]++));
       }
+
+      if (idxResetTriggerMap[segment.type])
+        for (const seg of idxResetTriggerMap[segment.type]!) idxMap[seg] = startIndex;
     }
   }
 

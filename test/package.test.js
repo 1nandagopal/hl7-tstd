@@ -34,7 +34,7 @@ describe('Published package contract', () => {
     await Promise.all([
       access(new URL(pkg.main, packageJsonUrl)),
       access(new URL(pkg.module, packageJsonUrl)),
-      access(new URL(pkg.types, packageJsonUrl))
+      access(new URL(pkg.types, packageJsonUrl)),
     ]);
 
     assert.equal(pkg.type, 'module');
@@ -53,7 +53,7 @@ describe('Published package contract', () => {
   test.skip('declaration exports align with ESM and CJS runtime exports', async () => {
     const [dtsSource, dctsSource] = await Promise.all([
       readFile(dtsUrl, 'utf8'),
-      readFile(dctsUrl, 'utf8')
+      readFile(dctsUrl, 'utf8'),
     ]);
     const esmModule = await import(esmUrl.href);
     const cjsModule = require(fileURLToPath(cjsUrl));

@@ -1,29 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 import { HL7 } from '../dist/index.js';
-
-function joinSegments(segments, eol = '\r') {
-  return segments.join(eol);
-}
-
-function makeSegmentMessage() {
-  return joinSegments([
-    'MSH|^~\\&|SEND|SFAC|RECV|RFAC|202401011230||ORU^R01|MSGID1|P|2.3',
-    'ZYX|1|A|B|C|Repeat1~Component1^Component2~SubComp1&SubComp2^Component2~Repeat3',
-    'PID|1||12345^^^MRN||DOE^JOHN^A',
-  ]);
-}
-
-function makeBaseMessage() {
-  return joinSegments([
-    'MSH|^~\\&|SEND|SFAC|RECV|RFAC|202401011230||ADT^A01|MSGID2|P|2.3',
-    'PID|1||12345^^^MRN||DOE^JOHN',
-  ]);
-}
-
-function getLastSegmentLine(hl7) {
-  return hl7.build().split(hl7.parseOptions.buildEolChar).at(-1);
-}
+import { getLastSegmentLine, makeBaseMessage, makeSegmentMessage } from './helpers.js';
 
 describe('Segment access behavior', () => {
   test('returns the full segment string when addressed by segment and both repeating index and sub component index is true', () => {
