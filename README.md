@@ -4,16 +4,6 @@ A simple package to create, parse & transform HL7 message.
 
 ![GitHub License](https://img.shields.io/github/license/1nandagopal/hl7-tstd)
 
-> [!WARNING]
-> The latest release has known bugs.
-> Please use the latest **`beta`** version until these issues are resolved.
-
-```bash
-npm i hl7-tstd@beta
-```
-
----
-
 ```javascript
 // CJS
 const { HL7 } = require('hl7-tstd');
