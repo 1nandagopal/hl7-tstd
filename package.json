@@ -28,9 +28,14 @@
   "sideEffects": false,
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
+  "browser": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
+      "browser": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js"
+      },
       "import": {
         "types": "./dist/index.d.ts",
         "import": "./dist/index.js"
@@ -43,18 +48,23 @@
         "types": "./dist/index.d.ts",
         "import": "./dist/index.js"
       }
-    }
+    },
+    "./package.json": "./package.json"
   },
   "scripts": {
     "build": "vp pack",
     "dev": "vp pack --watch",
     "test": "vp test",
+    "test:watch": "vp test --watch",
+    "test:coverage": "vp test --coverage",
+    "test:profile": "PROFILE=true vp test",
     "check": "vp check",
     "prepublishOnly": "vp run build",
     "prepare": "vp config"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",
+    "@vitest/coverage-v8": "^5.0.5",
     "oxfmt": "^0.75.0",
     "typescript": "^7.0.2",
     "vite-plus": "1.4.0"
@@ -63,6 +73,6 @@
     "vite": "npm:@voidzero-dev/vite-plus-core@1.4.0"
   },
   "engines": {
-    "node": ">=10.0.0"
+    "node": ">=12.0.0"
   }
 }
