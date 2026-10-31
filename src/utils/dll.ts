@@ -1,5 +1,5 @@
-import { Segment } from './segment';
-import type { SegmentType } from './types';
+import { Segment } from './segment.ts';
+import type { SegmentType } from './types.ts';
 
 class Node {
   constructor(

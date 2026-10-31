@@ -1,6 +1,6 @@
-import { DLL } from './dll';
-import { Segment } from './segment';
-import type { Prettify, SegmentType, TParseOptions } from './types';
+import { DLL } from './dll.ts';
+import { Segment } from './segment.ts';
+import type { Prettify, SegmentType, TParseOptions } from './types.ts';
 
 export class HL7 {
   raw: string;
@@ -32,8 +32,8 @@ export class HL7 {
       throw new Error('Invalid raw HL7 message. Expected msg to be a string starting with MSH');
     }
 
-    if (!['\r?\n\|\r', '\r\n', '\n', '\r'].includes(this.parseOptions.eolDelim)) {
-      throw new Error('Invalid EOL character. Expected \\r?\\n\|\\r, \\r\\n, \\n, \\r');
+    if (!['\r?\n|\r', '\r\n', '\n', '\r'].includes(this.parseOptions.eolDelim)) {
+      throw new Error('Invalid EOL character. Expected \\r?\\n|\\r, \\r\\n, \\n, \\r');
     }
 
     this.#dll = new DLL();
@@ -132,7 +132,7 @@ export class HL7 {
     if (!stopSegmentType || !Array.isArray(stopSegmentType))
       throw new Error(`Invalid parameter: 'stopSegmentType'`);
     if (typeof consecutive !== 'boolean')
-      throw new Error(`Invalid parameter: 'consecutive' [${consecutive}]`);
+      throw new Error(`Invalid parameter: 'consecutive' [${String(consecutive)}]`);
     if (!this.#dll.getNodeFromSegment(startSegment))
       throw new Error(`Failed to locate: 'startSegment' [${startSegment.type}]`);
 
@@ -238,7 +238,7 @@ export class HL7 {
 
     for (const segment of segments) {
       if (reindexConfig[segment.type]) {
-        segment.set(`${segment.type}.${field}`, String(idxMap[segment.type]++));
+        segment.set(`${segment.type}.${field}`, String(idxMap[segment.type]!++));
       }
 
       if (idxResetTriggerMap[segment.type])

@@ -1,4 +1,4 @@
-import type { Prettify, SegmentType, TParseOptions, TSegmentData } from './types';
+import type { Prettify, SegmentType, TParseOptions, TSegmentData } from './types.ts';
 
 export class Segment {
   data: TSegmentData = {};
@@ -61,7 +61,7 @@ export class Segment {
     if (!field || !/^[A-Z\d]{3}(\.\d+){1,2}$/.test(field))
       throw new Error(`Invalid parameter: 'field' [${field}]`);
     if (value == null || typeof value !== 'string')
-      throw new Error(`Invalid parameter: 'value' [${value}]`);
+      throw new Error(`Invalid parameter: 'value' [${String(value)}]`);
     if (validate(repeatingIndex))
       throw new Error(`Invalid parameter: 'repeatingIndex' [${repeatingIndex}]`);
     if (validate(subComponentIndex))

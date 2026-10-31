@@ -1,11 +1,16 @@
 {
   "compilerOptions": {
-    "rootDir": "./src",
+    "rootDir": "./",
     "outDir": "./dist",
-    "lib": ["ES2017"],
-    "module": "es6",
-    "moduleResolution": "bundler",
-    "target": "es2017",
+    "target": "esnext",
+    "lib": ["es2023"],
+    "moduleDetection": "force",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "resolveJsonModule": true,
+    "types": ["node"],
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
     "sourceMap": true,
     "declaration": true,
     "declarationMap": true,
@@ -21,8 +26,7 @@
     "verbatimModuleSyntax": true,
     "isolatedModules": true,
     "noUncheckedSideEffectImports": true,
-    "moduleDetection": "force",
     "skipLibCheck": true
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*", "test/**/*"]
 }
