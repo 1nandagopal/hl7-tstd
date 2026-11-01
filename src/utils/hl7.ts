@@ -1,6 +1,10 @@
 import { DLL } from './dll.ts';
+import { escapeHL7, type EscapeOptions, unescapeHL7 } from './escape.ts';
 import { Segment } from './segment.ts';
 import type { Prettify, SegmentType, TParseOptions } from './types.ts';
+
+const SEGMENT_TYPE_REGEX = /^[A-Z0-9]{3}$/;
+const DEFAULT_EOL_REGEX = /\r?\n|\r/;
 
 export class HL7 {
   raw: string;
@@ -9,11 +13,20 @@ export class HL7 {
 
   constructor(hl7Msg: string, parseOptions?: Prettify<Partial<TParseOptions>>) {
     this.raw = hl7Msg;
+
+    // Per HL7 v2 Chapter 2.5: infer delimiters dynamically from MSH header if not explicitly provided
+    const hasMsh = typeof hl7Msg === 'string' && hl7Msg.startsWith('MSH');
+    const fieldDelim = parseOptions?.fieldDelim ?? (hasMsh ? hl7Msg[3] : undefined) ?? '|';
+    const encEnd = hasMsh ? hl7Msg.indexOf(fieldDelim, 4) : -1;
+    const enc = encEnd > 4 ? hl7Msg.slice(4, encEnd) : '';
+
     this.parseOptions = {
-      fieldDelim: parseOptions?.fieldDelim ?? '|',
-      repeatingDelim: parseOptions?.repeatingDelim ?? '~',
-      componentDelim: parseOptions?.componentDelim ?? '^',
-      subCompDelim: parseOptions?.subCompDelim ?? '&',
+      fieldDelim,
+      componentDelim: parseOptions?.componentDelim ?? enc[0] ?? '^',
+      repeatingDelim: parseOptions?.repeatingDelim ?? enc[1] ?? '~',
+      escapeChar: parseOptions?.escapeChar ?? enc[2] ?? '\\',
+      subCompDelim: parseOptions?.subCompDelim ?? enc[3] ?? '&',
+      escapeDelimiters: parseOptions?.escapeDelimiters ?? false,
       eolDelim: parseOptions?.eolDelim ?? '\r?\n|\r',
       buildEolChar: parseOptions?.buildEolChar ?? '\r',
     };
@@ -25,7 +38,9 @@ export class HL7 {
   }
 
   /**
-   * @deprecated This method is triggered internally and doesnt need to be invoked manually.
+   * Re-parses `this.raw` into the internal linked list of segments.
+   *
+   * @deprecated This method is triggered automatically during instantiation and does not need to be called manually.
    */
   transform() {
     if (typeof this.raw !== 'string' || !this.raw.startsWith('MSH')) {
@@ -36,10 +51,14 @@ export class HL7 {
       throw new Error('Invalid EOL character. Expected \\r?\\n|\\r, \\r\\n, \\n, \\r');
     }
 
+    const eol =
+      this.parseOptions.eolDelim === '\r?\n|\r'
+        ? DEFAULT_EOL_REGEX
+        : new RegExp(this.parseOptions.eolDelim);
     this.#dll = new DLL();
 
     const segmentsStrArr = this.raw
-      .split(RegExp(this.parseOptions.eolDelim))
+      .split(eol)
       .filter((segmentStr) => Boolean(segmentStr) && this.validateSegment(segmentStr));
 
     const { fieldDelim, repeatingDelim, componentDelim, subCompDelim } = this.parseOptions;
@@ -77,6 +96,9 @@ export class HL7 {
     }
   }
 
+  /**
+   * Serializes the message segments into an HL7 v2 string.
+   */
   build() {
     const { fieldDelim, repeatingDelim, componentDelim, subCompDelim, buildEolChar } =
       this.parseOptions;
@@ -108,25 +130,35 @@ export class HL7 {
     return segmentsStr.join(buildEolChar);
   }
 
+  /**
+   * Returns the first segment matching the given type, or null.
+   */
   getSegment(type: SegmentType): Segment | null {
-    if (!/^[A-Z\d]{3}$/.test(type)) throw new Error(`Invalid parameter: 'type' [${type}]`);
+    if (!SEGMENT_TYPE_REGEX.test(type)) throw new Error(`Invalid parameter: 'type' [${type}]`);
 
     return this.#dll.getSegment(type);
   }
 
+  /**
+   * Returns all segments, optionally filtered by type.
+   */
   getSegments(type?: SegmentType): Segment[] {
-    if (type && !/^[A-Z\d]{3}$/.test(type)) throw new Error(`Invalid parameter: 'type' [${type}]`);
+    if (type && !SEGMENT_TYPE_REGEX.test(type))
+      throw new Error(`Invalid parameter: 'type' [${type}]`);
 
     return this.#dll.getSegments(type);
   }
 
+  /**
+   * Returns segments of the given type that appear after startSegment.
+   */
   getSegmentsAfter(
     startSegment: Segment,
     type: SegmentType,
     stopSegmentType: SegmentType[] = [],
     consecutive = false,
   ): Segment[] {
-    if (!/^[A-Z\d]{3}$/.test(type)) throw new Error(`Invalid parameter: 'type' [${type}]`);
+    if (!SEGMENT_TYPE_REGEX.test(type)) throw new Error(`Invalid parameter: 'type' [${type}]`);
     if (!startSegment || !(startSegment instanceof Segment))
       throw new Error(`Invalid parameter: 'startSegment'`);
     if (!stopSegmentType || !Array.isArray(stopSegmentType))
@@ -139,14 +171,20 @@ export class HL7 {
     return this.#dll.getSegmentsAfter(type, startSegment, stopSegmentType, consecutive);
   }
 
+  /**
+   * Appends a new segment to the end of the message.
+   */
   createSegment(type: SegmentType): Segment {
-    if (!/^[A-Z\d]{3}$/.test(type)) throw new Error(`Invalid parameter: 'type' [${type}]`);
+    if (!SEGMENT_TYPE_REGEX.test(type)) throw new Error(`Invalid parameter: 'type' [${type}]`);
 
     return this.#dll.appendNewSegment(new Segment(type, this.parseOptions));
   }
 
+  /**
+   * Inserts a new segment immediately after targetSegment.
+   */
   createSegmentAfter(type: SegmentType, targetSegment: Segment): Segment {
-    if (!/^[A-Z\d]{3}$/.test(type)) throw new Error(`Invalid parameter: 'type' [${type}]`);
+    if (!SEGMENT_TYPE_REGEX.test(type)) throw new Error(`Invalid parameter: 'type' [${type}]`);
     if (!targetSegment || !(targetSegment instanceof Segment))
       throw new Error(`Invalid parameter: 'targetSegment'`);
     if (!this.#dll.getNodeFromSegment(targetSegment))
@@ -155,8 +193,11 @@ export class HL7 {
     return this.#dll.appendNewSegment(new Segment(type, this.parseOptions), targetSegment);
   }
 
+  /**
+   * Inserts a new segment immediately before targetSegment.
+   */
   createSegmentBefore(type: SegmentType, targetSegment: Segment): Segment {
-    if (!/^[A-Z\d]{3}$/.test(type)) throw new Error(`Invalid parameter: 'type' [${type}]`);
+    if (!SEGMENT_TYPE_REGEX.test(type)) throw new Error(`Invalid parameter: 'type' [${type}]`);
     if (!targetSegment || !(targetSegment instanceof Segment))
       throw new Error(`Invalid parameter: 'targetSegment'`);
     if (!this.#dll.getNodeFromSegment(targetSegment))
@@ -165,10 +206,16 @@ export class HL7 {
     return this.#dll.prependNewSegment(new Segment(type, this.parseOptions), targetSegment);
   }
 
+  /**
+   * Removes a single segment from the message.
+   */
   deleteSegment(segment: Segment) {
     this.deleteSegments([segment]);
   }
 
+  /**
+   * Removes multiple segments from the message.
+   */
   deleteSegments(segments: Segment[]) {
     for (const segment of segments) {
       if (!segment || !(segment instanceof Segment))
@@ -180,6 +227,9 @@ export class HL7 {
     }
   }
 
+  /**
+   * Moves segment immediately after targetSegment.
+   */
   moveSegmentAfter(segment: Segment, targetSegment: Segment) {
     if (!segment || !(segment instanceof Segment)) throw new Error(`Invalid parameter: 'segment'`);
     if (!targetSegment || !(targetSegment instanceof Segment))
@@ -194,6 +244,9 @@ export class HL7 {
     this.#dll.moveNodeAfter(node, targetNode);
   }
 
+  /**
+   * Moves segment immediately before targetSegment.
+   */
   moveSegmentBefore(segment: Segment, targetSegment: Segment) {
     if (!segment || !(segment instanceof Segment)) throw new Error(`Invalid parameter: 'segment'`);
     if (!targetSegment || !(targetSegment instanceof Segment))
@@ -208,6 +261,9 @@ export class HL7 {
     this.#dll.moveNodeBefore(node, targetNode);
   }
 
+  /**
+   * Batch reindexes sequential segment counters based on reset rules.
+   */
   reindexSegments(
     reindexConfig: Partial<Record<SegmentType, SegmentType[]>>,
     startIndex = 1,
@@ -247,7 +303,41 @@ export class HL7 {
   }
 
   private validateSegment(segment: string) {
-    if (new RegExp(`^[A-Z0-9]{3}\\${this.parseOptions.fieldDelim}`).test(segment)) return true;
-    else throw new Error(`Invalid segment: ${segment}`);
+    if (
+      segment.length >= 4 &&
+      segment[3] === this.parseOptions.fieldDelim &&
+      SEGMENT_TYPE_REGEX.test(segment.slice(0, 3))
+    ) {
+      return true;
+    }
+    throw new Error(`Invalid segment: ${segment}`);
+  }
+
+  /**
+   * Escapes delimiter characters using standard HL7 delimiters.
+   */
+  static escape(value: string, options?: Partial<EscapeOptions>): string {
+    return escapeHL7(value, options);
+  }
+
+  /**
+   * Unescapes HL7 escape sequences using standard HL7 delimiters.
+   */
+  static unescape(value: string, options?: Partial<EscapeOptions>): string {
+    return unescapeHL7(value, options);
+  }
+
+  /**
+   * Escapes delimiter characters using this message's delimiters.
+   */
+  escape(value: string): string {
+    return escapeHL7(value, this.parseOptions);
+  }
+
+  /**
+   * Unescapes HL7 escape sequences using this message's delimiters.
+   */
+  unescape(value: string): string {
+    return unescapeHL7(value, this.parseOptions);
   }
 }

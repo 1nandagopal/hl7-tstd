@@ -26,6 +26,8 @@ export type TParseOptions = {
   repeatingDelim: string;
   componentDelim: string;
   subCompDelim: string;
+  escapeChar: string;
+  escapeDelimiters?: boolean;
   eolDelim: '\r?\n|\r' | '\r\n' | '\n' | '\r';
   buildEolChar: '\r\n' | '\n' | '\r';
 };

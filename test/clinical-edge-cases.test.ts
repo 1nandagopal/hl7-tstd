@@ -210,10 +210,9 @@ describe('MSH Header Delimiter Semantics', () => {
     expect(msh).toBeDefined();
     if (!msh) throw new Error('Expected MSH segment to be defined');
 
-    // Per HL7 v2 standard, MSH is unique: MSH.1 is defined as the Field Separator ('|') itself.
-    // In hl7-tstd's field array layout, get('MSH.1') resolves to the segment header token ('MSH'),
+    // Per HL7 v2 standard Chapter 2.5: MSH.1 is defined as the Field Separator ('|') itself,
     // while MSH.2 returns the encoding characters ('^~\&'), and MSH.3 returns Sending Application.
-    expect(msh.get('MSH.1')).toBe('MSH');
+    expect(msh.get('MSH.1')).toBe('|');
     expect(msh.get('MSH.2')).toBe('^~\\&');
     expect(msh.get('MSH.3')).toBe('SENDAPP');
     expect(msh.get('MSH.9.1')).toBe('ORU');

@@ -49,7 +49,7 @@ describe('HL7 Message Construction & Initialization', () => {
     expect(hl7.getSegments()).toHaveLength(7);
   });
 
-  it.skip('should infer custom field delimiter from MSH-1 without explicit parse options', () => {
+  it('should infer custom field delimiter from MSH-1 without explicit parse options', () => {
     const hl7 = new HL7(createAsteriskDelimitedMessage());
 
     expect(collectSegmentTypes(hl7)).toEqual(['MSH', 'PID']);
@@ -57,7 +57,7 @@ describe('HL7 Message Construction & Initialization', () => {
     expect(hl7.build()).toMatch(/^MSH\*/);
   });
 
-  it.skip('should infer custom encoding characters from MSH-2', () => {
+  it('should infer custom encoding characters from MSH-2', () => {
     const hl7 = new HL7(createCustomEncodingCharactersMessage());
     const pid = hl7.getSegment('PID');
     const obx = hl7.getSegment('OBX');

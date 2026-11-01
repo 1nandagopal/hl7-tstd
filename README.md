@@ -36,16 +36,31 @@ const hl7 = new HL7(raw); // raw: HL7 message string
 
 ## parseOptions
 
-Additional configs for hl7 parsing and building.
+Additional configs for hl7 parsing and building. Delimiters are automatically inferred from the MSH header when not explicitly provided.
 
-| Parameter      | Default Value |               Expected                |
-| :------------- | :-----------: | :-----------------------------------: |
-| fieldDelim     |     `\|`      |               `string`                |
-| repeatingDelim |      `~`      |               `string`                |
-| componentDelim |      `^`      |               `string`                |
-| subCompDelim   |      `&`      |               `string`                |
-| eolDelim       |  `\r?\n\|\r`  | `\r?\n\|\r` \| `\r\n` \| `\n` \| `\r` |
-| buildEolChar   |     `\r`      |               `string`                |
+| Parameter        | Default Value |               Expected                | Description                                                              |
+| :--------------- | :-----------: | :-----------------------------------: | :----------------------------------------------------------------------- |
+| fieldDelim       |     `\|`      |               `string`                | Field separator                                                          |
+| componentDelim   |      `^`      |               `string`                | Component separator                                                      |
+| repeatingDelim   |      `~`      |               `string`                | Repetition separator                                                     |
+| escapeChar       |      `\`      |               `string`                | Escape character                                                         |
+| subCompDelim     |      `&`      |               `string`                | Subcomponent separator                                                   |
+| escapeDelimiters |    `false`    |               `boolean`               | Automatically escape/unescape HL7 delimiters (`\F\`, `\S\`, `\R\`, etc.) |
+| eolDelim         |  `\r?\n\|\r`  | `\r?\n\|\r` \| `\r\n` \| `\n` \| `\r` | Segment end-of-line delimiter regex                                      |
+| buildEolChar     |     `\r`      |               `string`                | Segment line terminator for serialization                                |
+
+`parseOptions` is exposed publicly on `hl7.parseOptions` and `segment.parseOptions`. You can inspect or toggle `escapeDelimiters` dynamically on an existing instance at any time:
+
+```typescript
+// Toggle automatic delimiter escaping dynamically
+hl7.parseOptions.escapeDelimiters = true;
+```
+
+## Supported Message Formats & Constraints
+
+- **Single Message Structure**: Messages must begin with an `MSH` segment. Delimiters and encoding characters are dynamically inferred from MSH-1 and MSH-2 per HL7 v2 Chapter 2.5.
+- **Batch and File Envelopes**: Batch envelopes starting with `FHS` or `BHS` (HL7 Chapter 2.10) are currently not parsed directly; extract individual `MSH` messages before instantiation.
+- **Transport Frames & Cleanliness**: Inbound socket wrappers like MLLP frames (`0x0B` / `0x1C 0x0D`) or leading UTF-8 Byte Order Marks (`\uFEFF`) must be stripped before passing the string to the constructor.
 
 ## API References
 
@@ -118,6 +133,40 @@ Sets the value of on a segment.
 const zyxSegment = hl7.getSegment('ZYX');
 
 zyxSegment?.set('ZYX.5.2', 'ABCD', 1, 2); // ZYX|||||~^&&ABCD
+```
+
+</details>
+
+<details id="escape-segment">
+<summary><code>escape</code></summary>
+
+Escapes HL7 delimiter characters in a string value according to this segment's active delimiters (`\F\`, `\S\`, `\R\`, `\T\`, `\E\`).
+
+| Parameter |   Type   | Requirement  |
+| :-------- | :------: | :----------: |
+| value     | `string` | **Required** |
+
+Return: `string`
+
+```typescript
+const escaped = segment.escape('Smith^Jr'); // 'Smith\\S\\Jr'
+```
+
+</details>
+
+<details id="unescape-segment">
+<summary><code>unescape</code></summary>
+
+Unescapes HL7 escape sequences back into raw characters according to this segment's active delimiters.
+
+| Parameter |   Type   | Requirement  |
+| :-------- | :------: | :----------: |
+| value     | `string` | **Required** |
+
+Return: `string`
+
+```typescript
+const unescaped = segment.unescape('Smith\\S\\Jr'); // 'Smith^Jr'
 ```
 
 </details>
@@ -353,6 +402,44 @@ hl7.transform(); // deprecated
 ```
 
 </details>
+
+<details id="escape-hl7">
+<summary><code>escape</code></summary>
+
+Escapes HL7 delimiter characters in a string value according to this message's active/inferred delimiters (`\F\`, `\S\`, `\R\`, `\T\`, `\E\`). Also available as a static helper.
+
+```typescript
+// Instance method (uses message's inferred or custom delimiters):
+const escaped = hl7.escape('Smith^Jr'); // 'Smith\\S\\Jr'
+
+// Static utility:
+HL7.escape('Smith^Jr');
+```
+
+</details>
+
+<details id="unescape-hl7">
+<summary><code>unescape</code></summary>
+
+Unescapes HL7 escape sequences back into raw characters according to this message's active/inferred delimiters. Also available as a static helper.
+
+```typescript
+// Instance method:
+const unescaped = hl7.unescape('Smith\\S\\Jr'); // 'Smith^Jr'
+
+// Static utility:
+HL7.unescape('Smith\\S\\Jr');
+```
+
+</details>
+
+---
+
+## Best Practices & Caveats
+
+- **Avoid Double-Escaping**: When [`escapeDelimiters: true`](#parseoptions) is enabled in `parseOptions`, [`Segment.set`](#set) and [`Segment.get`](#get) automatically escape and unescape delimiters on writes and reads. Do not manually invoke [`escape()`](#escape-segment) or [`unescape()`](#unescape-segment) in this mode to prevent double-escaping characters (`^` -> `\S\` -> `\E\S\E\`).
+- **Custom Delimiters**: For messages using non-standard delimiters inferred from `MSH` (such as `*`), always use the instance methods ([`hl7.escape()`](#escape-hl7) / [`segment.escape()`](#escape-segment)) rather than the static [`HL7.escape()`](#escape-hl7) utility, which defaults to standard delimiters (`|^~\&`).
+- **Scope of Escaping**: Escaping and unescaping are intended strictly for individual field, component, or subcomponent data values. Never unescape an entire raw message or full segment string, as raw delimiters will destroy message structural boundaries.
 
 ---
 

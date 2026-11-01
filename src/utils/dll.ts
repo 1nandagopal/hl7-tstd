@@ -72,7 +72,12 @@ export class DLL {
     const newNode = new Node(newSegment);
     this.#segmentNodeMap.set(newSegment, newNode);
 
-    this.moveNodeAfter(newNode, this.getNodeFromSegment(targetSegment) || this.#tail);
+    const targetNode = targetSegment ? this.getNodeFromSegment(targetSegment) : this.#tail;
+    if (targetSegment && !targetNode) {
+      throw new Error(`Failed to locate: 'targetSegment' [${targetSegment.type}]`);
+    }
+
+    this.moveNodeAfter(newNode, targetNode);
 
     return newSegment;
   }

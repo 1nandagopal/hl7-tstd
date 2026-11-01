@@ -192,6 +192,101 @@ describe('Real-World HL7 Clinical Workflows', () => {
     expect(hl7.build()).toBe(raw);
   });
 
+  it('should support automatic escaping and unescaping when escapeDelimiters option is enabled', () => {
+    const raw = joinSegments([
+      'MSH|^~\\&|SENDAPP|SENDFAC|RECVAPP|RECVFAC|202401011230||ORU^R01|MSGID11|P|2.3',
+      'PID|1||12345^^^MRN||DOE\\S\\JR^JOHN',
+      'OBX|1|TX|REPORT^Impression||Impression: Patient has cough \\F\\ fever',
+    ]);
+
+    const hl7 = new HL7(raw, { escapeDelimiters: true });
+    const pid = hl7.getSegment('PID');
+    expect(pid?.get('PID.5.1')).toBe('DOE^JR'); // automatically unescapes \S\ to ^
+    expect(pid?.get('PID.5.2')).toBe('JOHN');
+
+    const obx = hl7.getSegment('OBX');
+    expect(obx?.get('OBX.5')).toBe('Impression: Patient has cough | fever'); // unescapes \F\ to |
+
+    // Setting a field with raw delimiters automatically escapes them into HL7 escape sequences
+    pid?.set('PID.5.1', 'SMITH^SR');
+    expect(hl7.build()).toContain('SMITH\\S\\SR^JOHN');
+
+    // Utility static escape / unescape functions
+    expect(HL7.escape('A|B^C~D&E\\F')).toBe('A\\F\\B\\S\\C\\R\\D\\T\\E\\E\\F');
+    expect(HL7.unescape('A\\F\\B\\S\\C\\R\\D\\T\\E\\E\\F')).toBe('A|B^C~D&E\\F');
+
+    // Instance escape / unescape methods on HL7 and Segment
+    expect(hl7.escape('A|B^C~D&E\\F')).toBe('A\\F\\B\\S\\C\\R\\D\\T\\E\\E\\F');
+    expect(hl7.unescape('A\\F\\B\\S\\C\\R\\D\\T\\E\\E\\F')).toBe('A|B^C~D&E\\F');
+    expect(pid?.escape('SMITH^JR|SR')).toBe('SMITH\\S\\JR\\F\\SR');
+    expect(pid?.unescape('SMITH\\S\\JR\\F\\SR')).toBe('SMITH^JR|SR');
+  });
+
+  it('should support dynamically toggling escapeDelimiters via public parseOptions post-construction', () => {
+    const raw = joinSegments([
+      'MSH|^~\\&|SENDAPP|SENDFAC|RECVAPP|RECVFAC|202401011230||ORU^R01|MSGID12|P|2.3',
+      'PID|1||12345^^^MRN||DOE\\S\\JR^JOHN',
+    ]);
+
+    // Initialize with escapeDelimiters disabled by default
+    const hl7 = new HL7(raw);
+    const pid = hl7.getSegment('PID');
+    expect(pid).toBeDefined();
+    if (!pid) throw new Error('PID required');
+
+    // Without escapeDelimiters flag, raw HL7 escape sequences are returned verbatim
+    expect(pid.get('PID.5.1')).toBe('DOE\\S\\JR');
+
+    // Setting unescaped value writes verbatim without escaping
+    pid.set('PID.5.2', 'TEST^VALUE');
+    expect(pid.get('PID.5.2')).toBe('TEST^VALUE');
+
+    // Enable escapeDelimiters dynamically via public parseOptions on the HL7 instance
+    hl7.parseOptions.escapeDelimiters = true;
+
+    // Reading now automatically unescapes
+    expect(pid.get('PID.5.1')).toBe('DOE^JR');
+
+    // Writing now automatically escapes
+    pid.set('PID.5.1', "O'CONNOR^JR");
+    expect(hl7.build()).toContain("O'CONNOR\\S\\JR");
+    expect(pid.get('PID.5.1')).toBe("O'CONNOR^JR");
+
+    // Disable escapeDelimiters dynamically
+    hl7.parseOptions.escapeDelimiters = false;
+    expect(pid.get('PID.5.1')).toBe("O'CONNOR\\S\\JR");
+
+    // Test segment-level public parseOptions override
+    expect(pid.parseOptions.escapeDelimiters).toBe(false);
+    pid.parseOptions.escapeDelimiters = true;
+    pid.set('PID.5.1', 'NEW^NAME');
+    expect(pid.get('PID.5.1')).toBe('NEW^NAME');
+    pid.parseOptions.escapeDelimiters = false;
+    expect(pid.get('PID.5.1')).toBe('NEW\\S\\NAME');
+  });
+
+  it('should use instance escape and unescape with dynamically inferred custom delimiters', () => {
+    // Custom message using '*' as field separator, '$' as component, and '!' as escape char
+    const rawCustom = joinSegments([
+      'MSH*$~!&*SENDAPP*SENDFAC*RECVAPP*RECVFAC*202401011230**ORU$R01*MSGID13*P*2.3',
+      'PID*1***DOE!S!JR$JOHN',
+    ]);
+
+    const hl7 = new HL7(rawCustom);
+    expect(hl7.parseOptions.fieldDelim).toBe('*');
+    expect(hl7.parseOptions.componentDelim).toBe('$');
+    expect(hl7.parseOptions.escapeChar).toBe('!');
+
+    // hl7 instance methods use inferred delimiters
+    expect(hl7.escape('A*B$C!D')).toBe('A!F!B!S!C!E!D');
+    expect(hl7.unescape('A!F!B!S!C!E!D')).toBe('A*B$C!D');
+
+    // segment instance methods use inferred delimiters
+    const pid = hl7.getSegment('PID');
+    expect(pid?.escape('ALPHA*BETA')).toBe('ALPHA!F!BETA');
+    expect(pid?.unescape('ALPHA!F!BETA')).toBe('ALPHA*BETA');
+  });
+
   it('should support unwrapping TCP/IP MLLP socket streams into clean HL7 messages', () => {
     const cleanMessage = createDiagnosticReportMessage();
     const framedSocketBuffer = wrapInMllpFrame(cleanMessage);

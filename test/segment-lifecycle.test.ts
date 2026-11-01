@@ -396,6 +396,20 @@ describe('Advanced Segment Hierarchy Mutations', () => {
     expect(segments[2]?.type).toBe('PID');
   });
 
+  it('should throw when createSegmentAfter or createSegmentBefore targets an unattached segment', () => {
+    const hl7A = new HL7(createStandardOruMessage());
+    const hl7B = new HL7(createDiagnosticReportMessage());
+    const unattachedPid = hl7B.getSegment('PID');
+    if (!unattachedPid) throw new Error('PID required');
+
+    expect(() => hl7A.createSegmentAfter('NTE', unattachedPid)).toThrow(
+      /Failed to locate: 'targetSegment'/,
+    );
+    expect(() => hl7A.createSegmentBefore('NTE', unattachedPid)).toThrow(
+      /Failed to locate: 'targetSegment'/,
+    );
+  });
+
   it('should reset linked list to original raw message if transform() is explicitly re-invoked', () => {
     const raw = createStandardOruMessage();
     const hl7 = new HL7(raw);
